@@ -1,0 +1,187 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Role: ADMIN | MANAGER | USER | VIEWER
+// ProjectStatus: DRAFT | ACTIVE | ON_HOLD | COMPLETED | CANCELLED | ARCHIVED
+// Priority: LOW | MEDIUM | HIGH | URGENT
+// SubmissionStatus: TODO | IN_PROGRESS | SUBMITTED | REVISION | RESUBMITTED | APPROVED | DONE | ON_HOLD
+// RevisionStatus: OPEN | IN_PROGRESS | RESOLVED
+
+model Division {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users User[]
+}
+
+model ClientContact {
+  id          String   @id @default(uuid())
+  name        String
+  company     String?
+  email       String?  @unique
+  phone       String?
+  position    String?
+  notes       String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  projects Project[]
+}
+
+model User {
+  id           String   @id @default(uuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         String   @default("USER")
+  isActive     Boolean  @default(true)
+  divisionId   String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  division        Division?       @relation(fields: [divisionId], references: [id])
+  projectsPIC     Project[]       @relation("PIC")
+  projectsCreated Project[]       @relation("Creator")
+  submissions     Submission[]
+  notes           Note[]
+  revisions       Revision[]
+  attachments     Attachment[]
+  activityLogs    ActivityLog[]
+  projectMembers  ProjectMember[]
+}
+
+model Project {
+  id              String   @id @default(uuid())
+  title           String
+  description     String?
+  status          String   @default("DRAFT")
+  priority        String   @default("MEDIUM")
+  startDate       DateTime?
+  deadline        DateTime
+  progressTotal   Float    @default(0)
+  picId           String
+  createdById     String
+  clientContactId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  pic           User            @relation("PIC", fields: [picId], references: [id])
+  createdBy     User            @relation("Creator", fields: [createdById], references: [id])
+  clientContact ClientContact?  @relation(fields: [clientContactId], references: [id])
+  submissions   Submission[]
+  attachments   Attachment[]
+  activityLogs  ActivityLog[]
+  members       ProjectMember[]
+}
+
+model ProjectMember {
+  id                  String  @id @default(uuid())
+  projectId           String
+  userId              String
+  canCreateSubmission Boolean @default(false)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@unique([projectId, userId])
+}
+
+model Submission {
+  id             String    @id @default(uuid())
+  projectId      String
+  title          String
+  description    String?
+  status         String    @default("TODO")
+  progress       Int       @default(0)
+  deadline       DateTime?
+  assignedUserId String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  project        Project         @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignedUser   User?           @relation(fields: [assignedUserId], references: [id])
+  checklistItems ChecklistItem[]
+  notes          Note[]
+  revisions      Revision[]
+  attachments    Attachment[]
+  activityLogs   ActivityLog[]
+}
+
+model ChecklistItem {
+  id           String    @id @default(uuid())
+  submissionId String
+  title        String
+  isCompleted  Boolean   @default(false)
+  dueDate      DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+}
+
+model Note {
+  id           String   @id @default(uuid())
+  submissionId String
+  userId       String
+  noteText     String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id])
+}
+
+model Revision {
+  id             String   @id @default(uuid())
+  submissionId   String
+  revisionNumber Int
+  feedback       String
+  status         String   @default("OPEN")
+  createdById    String
+  attachment     String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  createdBy  User       @relation(fields: [createdById], references: [id])
+}
+
+model Attachment {
+  id           String   @id @default(uuid())
+  projectId    String?
+  submissionId String?
+  fileName     String
+  fileUrl      String
+  fileType     String
+  uploadedById String
+  createdAt    DateTime @default(now())
+
+  project    Project?    @relation(fields: [projectId], references: [id])
+  submission Submission? @relation(fields: [submissionId], references: [id])
+  uploadedBy User        @relation(fields: [uploadedById], references: [id])
+}
+
+model ActivityLog {
+  id           String   @id @default(uuid())
+  userId       String
+  projectId    String?
+  submissionId String?
+  action       String
+  description  String?
+  createdAt    DateTime @default(now())
+
+  user       User        @relation(fields: [userId], references: [id])
+  project    Project?    @relation(fields: [projectId], references: [id])
+  submission Submission? @relation(fields: [submissionId], references: [id])
+}
