@@ -42,6 +42,7 @@ app.use('/api/revisions', revisionsRouter);
 app.use('/api/submissions/:id/attachments', submissionAttachmentRouter);
 app.use('/api/upload', uploadRouter);
 app.use('/api/reports', reportRoutes);
+app.use('/api/notifications', require('./routes/notification.routes'));
 app.use('/api/divisions', divisionRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/client-contacts', clientContactRoutes);
