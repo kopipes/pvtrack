@@ -1,8 +1,8 @@
-const { PrismaClient } = require('@prisma/client');
+
 const { success, error } = require('../utils/response');
 const path = require('path');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 const uploadFile = async (req, res) => {
   if (!req.file) return error(res, 'No file uploaded', 400);

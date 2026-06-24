@@ -1,7 +1,7 @@
-const { PrismaClient } = require('@prisma/client');
+
 const { success, error } = require('../utils/response');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 const getDivisions = async (req, res) => {
   try {

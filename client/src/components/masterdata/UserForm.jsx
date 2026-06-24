@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import api from '../../lib/axios';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -38,7 +39,7 @@ export default function UserForm({ user, onSuccess }) {
       }
       onSuccess?.();
     } catch (err) {
-      console.error(err);
+      toast.error(err.response?.data?.message || 'Failed to save user');
     } finally {
       setLoading(false);
     }

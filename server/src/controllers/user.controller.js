@@ -1,8 +1,8 @@
-const { PrismaClient } = require('@prisma/client');
+
 const bcrypt = require('bcryptjs');
 const { success, error } = require('../utils/response');
 
-const prisma = new PrismaClient();
+const prisma = require('../lib/prisma');
 
 const userSelect = {
   id: true, name: true, email: true, role: true,

@@ -2,8 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import * as RadixDialog from '@radix-ui/react-dialog';
 import {
-  X, Loader2, Plus, Trash2, CheckSquare, MessageSquare,
-  RotateCcw, Paperclip, Activity, ChevronRight, Check, Pencil
+  X, Loader2, Plus, Trash2, MessageSquare,
+  RotateCcw, Paperclip, Check, Pencil
 } from 'lucide-react';
 import { useSubmission } from '../../hooks/useSubmissions';
 import { useAuth } from '../../contexts/AuthContext';
@@ -14,7 +14,7 @@ import { Textarea } from '../ui/Textarea';
 import { Label } from '../ui/Label';
 import { Select } from '../ui/Select';
 import { Avatar } from '../ui/Avatar';
-import { Badge } from '../ui/Badge';
+
 import { ProgressBar } from '../ui/ProgressBar';
 import { Skeleton } from '../ui/Skeleton';
 import { cn, STATUS_CONFIG, formatDate, isOverdue, timeAgo } from '../../lib/utils';
