@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useForm } from 'react-hook-form';
 import * as RadixDialog from '@radix-ui/react-dialog';
 import {
   X, Loader2, Plus, Trash2, CheckSquare, MessageSquare,
-  RotateCcw, Paperclip, Activity, ChevronRight, Check
+  RotateCcw, Paperclip, Activity, ChevronRight, Check, Pencil
 } from 'lucide-react';
 import { useSubmission } from '../../hooks/useSubmissions';
 import { useAuth } from '../../contexts/AuthContext';
@@ -96,12 +97,71 @@ function ProgressSection({ submission, onUpdate }) {
 }
 
 // ── Overview tab ─────────────────────────────────────────────────────────────
-function OverviewTab({ submission, members, onUpdate }) {
+function OverviewTab({ submission, onUpdate }) {
   const { isAdminOrManager, canWrite } = useAuth();
   const [actionLoading, setActionLoading] = useState(null);
+  const [editing, setEditing] = useState(false);
+  const [editLoading, setEditLoading] = useState(false);
+  const [users, setUsers] = useState([]);
+
+  const { register, handleSubmit, reset } = useForm({
+    defaultValues: {
+      title: submission.title,
+      description: submission.description || '',
+      status: submission.status,
+      deadline: submission.deadline ? submission.deadline.split('T')[0] : '',
+      assignedUserId: submission.assignedUserId || '',
+    },
+  });
+
+  useEffect(() => {
+    if (editing && users.length === 0) {
+      api.get(`/projects/${submission.projectId}/members`)
+        .then((res) => {
+          const members = res.data.data || [];
+          if (members.length > 0) {
+            setUsers(members.map((m) => ({ id: m.userId, name: m.user?.name || m.userId })));
+          } else {
+            api.get('/users', { params: { isActive: 'true' } })
+              .then((r) => setUsers(r.data.data.map((u) => ({ id: u.id, name: u.name }))));
+          }
+        })
+        .catch(() => {});
+    }
+  }, [editing]);
+
+  const startEdit = () => {
+    reset({
+      title: submission.title,
+      description: submission.description || '',
+      status: submission.status,
+      deadline: submission.deadline ? submission.deadline.split('T')[0] : '',
+      assignedUserId: submission.assignedUserId || '',
+    });
+    setEditing(true);
+  };
+
+  const saveEdit = async (data) => {
+    setEditLoading(true);
+    try {
+      await api.put(`/submissions/${submission.id}`, {
+        ...data,
+        assignedUserId: data.assignedUserId || null,
+        deadline: data.deadline || null,
+      });
+      toast.success('Submission updated');
+      setEditing(false);
+      onUpdate();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update');
+    } finally {
+      setEditLoading(false);
+    }
+  };
 
   const statusCfg = STATUS_CONFIG[submission.status];
   const overdue = isOverdue(submission.deadline) && !['APPROVED', 'DONE'].includes(submission.status);
+  const isLocked = ['APPROVED', 'DONE'].includes(submission.status);
 
   const doAction = async (endpoint, successMsg) => {
     setActionLoading(endpoint);
@@ -116,8 +176,67 @@ function OverviewTab({ submission, members, onUpdate }) {
     }
   };
 
+  if (editing) {
+    return (
+      <form onSubmit={handleSubmit(saveEdit)} className="space-y-4">
+        <div className="space-y-2">
+          <Label>Title</Label>
+          <Input {...register('title', { required: true })} className="text-sm" />
+        </div>
+        <div className="space-y-2">
+          <Label>Description</Label>
+          <Textarea {...register('description')} rows={3} className="text-sm" />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label>Status</Label>
+            <Select {...register('status')}>
+              <option value="TODO">To Do</option>
+              <option value="IN_PROGRESS">In Progress</option>
+              <option value="SUBMITTED">Submitted</option>
+              <option value="REVISION">Revision</option>
+              <option value="RESUBMITTED">Resubmitted</option>
+              <option value="APPROVED">Approved</option>
+              <option value="DONE">Done</option>
+              <option value="ON_HOLD">On Hold</option>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Deadline</Label>
+            <Input type="date" {...register('deadline')} className="text-sm" />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Label>Assign To</Label>
+          <Select {...register('assignedUserId')}>
+            <option value="">Unassigned</option>
+            {users.map((u) => (
+              <option key={u.id} value={u.id}>{u.name}</option>
+            ))}
+          </Select>
+        </div>
+        <div className="flex gap-2 pt-2">
+          <Button type="submit" size="sm" disabled={editLoading}>
+            {editLoading && <Loader2 className="h-3 w-3 animate-spin" />}
+            Save Changes
+          </Button>
+          <Button type="button" size="sm" variant="outline" onClick={() => setEditing(false)}>Cancel</Button>
+        </div>
+      </form>
+    );
+  }
+
   return (
     <div className="space-y-6">
+      {/* Edit button */}
+      {canWrite && !isLocked && (
+        <div className="flex justify-end">
+          <Button size="sm" variant="outline" onClick={startEdit}>
+            <Pencil className="h-3.5 w-3.5" /> Edit Details
+          </Button>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-4 text-sm">
         <div>
           <p className="text-muted-foreground mb-1">Status</p>
@@ -156,7 +275,7 @@ function OverviewTab({ submission, members, onUpdate }) {
         </div>
       )}
 
-      {(canWrite || ['APPROVED', 'DONE'].includes(submission.status)) && (
+      {(canWrite || isLocked) && (
         <ProgressSection submission={submission} onUpdate={onUpdate} />
       )}
 
@@ -193,6 +312,8 @@ function ChecklistTab({ submission, onUpdate }) {
   const [adding, setAdding] = useState(false);
   const items = submission.checklistItems || [];
 
+  const inputRef = useRef(null);
+
   const addItem = async () => {
     if (!newItem.trim()) return;
     setAdding(true);
@@ -200,6 +321,8 @@ function ChecklistTab({ submission, onUpdate }) {
       await api.post(`/submissions/${submission.id}/checklist`, { title: newItem.trim() });
       setNewItem('');
       onUpdate();
+      // Keep focus on input after adding
+      setTimeout(() => inputRef.current?.focus(), 50);
     } catch {
       toast.error('Failed to add item');
     } finally {
@@ -272,11 +395,13 @@ function ChecklistTab({ submission, onUpdate }) {
       {canWrite && (
         <div className="flex gap-2 pt-2">
           <Input
+            ref={inputRef}
             value={newItem}
             onChange={(e) => setNewItem(e.target.value)}
             placeholder="Add checklist item..."
             onKeyDown={(e) => e.key === 'Enter' && addItem()}
             className="text-sm"
+            autoFocus
           />
           <Button size="sm" onClick={addItem} disabled={adding || !newItem.trim()}>
             {adding ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
@@ -617,7 +742,7 @@ export function SubmissionSlideOver({ submissionId, open, onOpenChange, members 
 
                 <div className="flex-1 overflow-y-auto px-6 pb-6">
                   <TabsContent value="overview">
-                    <OverviewTab submission={submission} members={members} onUpdate={handleUpdate} />
+                    <OverviewTab submission={submission} onUpdate={handleUpdate} />
                   </TabsContent>
                   <TabsContent value="checklist">
                     <ChecklistTab submission={submission} onUpdate={handleUpdate} />

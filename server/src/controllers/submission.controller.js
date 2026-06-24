@@ -126,8 +126,46 @@ const updateSubmission = async (req, res) => {
   const { title, description, deadline, assignedUserId, status } = req.body;
 
   try {
-    const existing = await prisma.submission.findUnique({ where: { id: req.params.id } });
+    const existing = await prisma.submission.findUnique({
+      where: { id: req.params.id },
+      include: { project: { select: { picId: true, createdById: true } } },
+    });
     if (!existing) return error(res, 'Submission not found', 404);
+
+    // Allow: admin, manager, project PIC, project creator, or member with canCreateSubmission
+    const isAdminOrManager = ['ADMIN', 'MANAGER'].includes(req.user.role);
+    const isProjectOwner = existing.project.picId === req.user.id || existing.project.createdById === req.user.id;
+    if (!isAdminOrManager && !isProjectOwner) {
+      const member = await prisma.projectMember.findUnique({
+        where: { projectId_userId: { projectId: existing.projectId, userId: req.user.id } },
+      });
+      if (!member) return error(res, 'Forbidden: not a project member', 403);
+    }
+
+    // Build change description
+    const changes = [];
+    if (title && title !== existing.title) changes.push(`title: "${existing.title}" → "${title}"`);
+    if (status && status !== existing.status) changes.push(`status: ${existing.status} → ${status}`);
+    if (deadline !== undefined) {
+      const newDeadline = deadline ? new Date(deadline).toDateString() : 'none';
+      const oldDeadline = existing.deadline ? existing.deadline.toDateString() : 'none';
+      if (newDeadline !== oldDeadline) changes.push(`deadline: ${oldDeadline} → ${newDeadline}`);
+    }
+    if (assignedUserId !== undefined && assignedUserId !== existing.assignedUserId) {
+      // Resolve new and old assignee names
+      const [oldUser, newUser] = await Promise.all([
+        existing.assignedUserId
+          ? prisma.user.findUnique({ where: { id: existing.assignedUserId }, select: { name: true } })
+          : Promise.resolve(null),
+        assignedUserId
+          ? prisma.user.findUnique({ where: { id: assignedUserId }, select: { name: true } })
+          : Promise.resolve(null),
+      ]);
+      const oldName = oldUser?.name || 'Unassigned';
+      const newName = newUser?.name || 'Unassigned';
+      changes.push(`assignee: ${oldName} → ${newName}`);
+    }
+    if (description !== undefined && description !== existing.description) changes.push('description updated');
 
     const submission = await prisma.submission.update({
       where: { id: req.params.id },
@@ -141,7 +179,11 @@ const updateSubmission = async (req, res) => {
       include: submissionInclude,
     });
 
-    await logActivity(req.user.id, 'SUBMISSION_UPDATED', `Submission "${submission.title}" updated`, submission.projectId, submission.id);
+    const changeDesc = changes.length > 0
+      ? `Submission "${submission.title}" updated by ${req.user.name}: ${changes.join(', ')}`
+      : `Submission "${submission.title}" updated by ${req.user.name}`;
+
+    await logActivity(req.user.id, 'SUBMISSION_UPDATED', changeDesc, submission.projectId, submission.id);
 
     return success(res, submission);
   } catch (err) {
@@ -222,6 +264,15 @@ const approveSubmission = async (req, res) => {
   try {
     const existing = await prisma.submission.findUnique({ where: { id: req.params.id } });
     if (!existing) return error(res, 'Submission not found', 404);
+
+    // Mark all open/in-progress revisions as RESOLVED
+    await prisma.revision.updateMany({
+      where: {
+        submissionId: req.params.id,
+        status: { in: ['OPEN', 'IN_PROGRESS'] },
+      },
+      data: { status: 'RESOLVED' },
+    });
 
     const submission = await prisma.submission.update({
       where: { id: req.params.id },

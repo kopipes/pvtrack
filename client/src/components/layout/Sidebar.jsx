@@ -58,15 +58,37 @@ export function Sidebar({ collapsed, setCollapsed }) {
         collapsed ? 'w-[60px]' : 'w-60'
       )}
     >
-      {/* Logo */}
+      {/* Logo + collapse toggle */}
       <div className={cn(
         'flex items-center h-16 border-b border-border shrink-0',
-        collapsed ? 'justify-center' : 'px-4 gap-3'
+        collapsed ? 'flex-col justify-center gap-1 px-0' : 'px-3 gap-3'
       )}>
-        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary shrink-0">
-          <span className="text-primary-foreground font-bold text-sm">PV</span>
-        </div>
-        {!collapsed && <span className="font-bold text-lg tracking-tight">PVTrack</span>}
+        {!collapsed && (
+          <>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary shrink-0">
+              <span className="text-primary-foreground font-bold text-sm">PV</span>
+            </div>
+            <span className="font-bold text-lg tracking-tight flex-1">PVTrack</span>
+          </>
+        )}
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          title={collapsed ? 'Expand' : 'Collapse'}
+          className={cn(
+            'flex items-center justify-center rounded-lg text-muted-foreground transition-colors',
+            'hover:bg-accent hover:text-accent-foreground',
+            collapsed ? 'h-10 w-10' : 'h-8 w-8 shrink-0'
+          )}
+        >
+          {collapsed
+            ? <ChevronRight className="h-[18px] w-[18px]" />
+            : <ChevronLeft className="h-[18px] w-[18px]" />}
+        </button>
+        {collapsed && (
+          <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary shrink-0">
+            <span className="text-primary-foreground font-bold text-xs">PV</span>
+          </div>
+        )}
       </div>
 
       {/* Nav links */}
@@ -126,20 +148,7 @@ export function Sidebar({ collapsed, setCollapsed }) {
           {!collapsed && <span>Logout</span>}
         </button>
 
-        {/* Collapse toggle */}
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          title={collapsed ? 'Expand' : 'Collapse'}
-          className={cn(
-            'flex items-center text-xs text-muted-foreground rounded-lg transition-colors',
-            'hover:bg-accent hover:text-accent-foreground',
-            collapsed ? 'h-10 w-10 justify-center mx-auto' : 'w-full gap-3 px-3 py-2'
-          )}
-        >
-          {collapsed
-            ? <ChevronRight className="h-[18px] w-[18px] shrink-0" />
-            : <><ChevronLeft className="h-[18px] w-[18px] shrink-0" /><span>Collapse</span></>}
-        </button>
+
       </div>
     </aside>
   );

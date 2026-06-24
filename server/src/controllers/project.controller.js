@@ -76,9 +76,12 @@ const createProject = async (req, res) => {
       include: projectInclude,
     });
 
-    // Auto-add creator as member
-    const membersToAdd = [{ projectId: project.id, userId: req.user.id, canCreateSubmission: true }];
-    await prisma.projectMember.createMany({ data: membersToAdd, skipDuplicates: true });
+    // Auto-add creator as member (upsert to avoid duplicate error)
+    await prisma.projectMember.upsert({
+      where: { projectId_userId: { projectId: project.id, userId: req.user.id } },
+      create: { projectId: project.id, userId: req.user.id, canCreateSubmission: true },
+      update: {},
+    });
 
     await logActivity(req.user.id, 'PROJECT_CREATED', `Project "${title}" created`, project.id);
 
@@ -110,11 +113,23 @@ const getProject = async (req, res) => {
 };
 
 const updateProject = async (req, res) => {
-  const { title, description, status, priority, startDate, deadline, picId } = req.body;
+  const { title, description, status, priority, startDate, deadline, picId, clientContactId } = req.body;
 
   try {
     const existing = await prisma.project.findUnique({ where: { id: req.params.id } });
     if (!existing) return error(res, 'Project not found', 404);
+
+    // Build change description
+    const changes = [];
+    if (title && title !== existing.title) changes.push(`title: "${existing.title}" → "${title}"`);
+    if (status && status !== existing.status) changes.push(`status: ${existing.status} → ${status}`);
+    if (priority && priority !== existing.priority) changes.push(`priority: ${existing.priority} → ${priority}`);
+    if (deadline) {
+      const newD = new Date(deadline).toDateString();
+      const oldD = existing.deadline ? existing.deadline.toDateString() : 'none';
+      if (newD !== oldD) changes.push(`deadline: ${oldD} → ${newD}`);
+    }
+    if (description !== undefined && description !== existing.description) changes.push('description updated');
 
     const project = await prisma.project.update({
       where: { id: req.params.id },
@@ -126,11 +141,16 @@ const updateProject = async (req, res) => {
         ...(startDate !== undefined && { startDate: startDate ? new Date(startDate) : null }),
         ...(deadline && { deadline: new Date(deadline) }),
         ...(picId && { picId }),
+        ...(clientContactId !== undefined && { clientContactId: clientContactId || null }),
       },
       include: projectInclude,
     });
 
-    await logActivity(req.user.id, 'PROJECT_UPDATED', `Project "${project.title}" updated`, project.id);
+    const changeDesc = changes.length > 0
+      ? `Project "${project.title}" updated by ${req.user.name}: ${changes.join(', ')}`
+      : `Project "${project.title}" updated by ${req.user.name}`;
+
+    await logActivity(req.user.id, 'PROJECT_UPDATED', changeDesc, project.id);
 
     return success(res, project, 'Project updated');
   } catch (err) {

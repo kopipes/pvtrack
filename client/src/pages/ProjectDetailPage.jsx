@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, Plus, Edit, Download, LayoutList, Kanban,
-  Calendar, User, AlertTriangle
+  Calendar, User, AlertTriangle, Trash2
 } from 'lucide-react';
 import { useProject } from '../hooks/useProjects';
 import { useSubmissions } from '../hooks/useSubmissions';
@@ -54,7 +54,7 @@ function CircularProgress({ value, size = 80 }) {
 export default function ProjectDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { isAdminOrManager, canWrite } = useAuth();
+  const { isAdminOrManager, canWrite, isAdmin } = useAuth();
   const { project, loading: projectLoading, refetch: refetchProject } = useProject(id);
   const { submissions, loading: subsLoading, refetch: refetchSubmissions } = useSubmissions(id);
 
@@ -85,6 +85,17 @@ export default function ProjectDetailPage() {
     setEditProjectOpen(false);
     refetchProject();
     toast.success('Project updated');
+  };
+
+  const handleDeleteProject = async () => {
+    if (!confirm(`Delete project "${project?.title}"? This will also delete all submissions and cannot be undone.`)) return;
+    try {
+      await api.delete(`/projects/${id}`);
+      toast.success('Project deleted');
+      navigate('/projects');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete project');
+    }
   };
 
   const handleExport = async () => {
@@ -196,7 +207,6 @@ export default function ProjectDetailPage() {
             <DialogContent title="Create Submission" description="Add a new submission card to this project.">
               <SubmissionForm
                 projectId={id}
-                members={project?.members || []}
                 onSuccess={handleSubCreated}
               />
             </DialogContent>
@@ -223,6 +233,13 @@ export default function ProjectDetailPage() {
           <Download className="h-4 w-4" />
           Export CSV
         </Button>
+
+        {isAdmin && project && (
+          <Button size="sm" variant="outline" className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={handleDeleteProject}>
+            <Trash2 className="h-4 w-4" />
+            Delete Project
+          </Button>
+        )}
 
         {/* View toggle */}
         <div className="ml-auto flex items-center rounded-lg border border-border p-1 gap-1">

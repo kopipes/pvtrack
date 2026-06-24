@@ -1,6 +1,6 @@
 import { useForm } from 'react-hook-form';
 import { Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Label } from '../ui/Label';
@@ -8,9 +8,32 @@ import { Select } from '../ui/Select';
 import { Textarea } from '../ui/Textarea';
 import { DialogClose } from '../ui/Dialog';
 import api from '../../lib/axios';
+import { toast } from 'sonner';
 
-export function SubmissionForm({ projectId, submission, members = [], onSuccess }) {
+export function SubmissionForm({ projectId, submission, onSuccess }) {
   const [loading, setLoading] = useState(false);
+  const [users, setUsers] = useState([]);
+
+  useEffect(() => {
+    // Fetch project members first; fall back to all active users
+    if (projectId) {
+      api.get(`/projects/${projectId}/members`)
+        .then((res) => {
+          const members = res.data.data || [];
+          if (members.length > 0) {
+            setUsers(members.map((m) => ({ id: m.userId, name: m.user?.name || m.userId })));
+          } else {
+            return api.get('/users', { params: { isActive: 'true' } })
+              .then((r) => setUsers(r.data.data.map((u) => ({ id: u.id, name: u.name }))));
+          }
+        })
+        .catch(() => {
+          api.get('/users', { params: { isActive: 'true' } })
+            .then((r) => setUsers(r.data.data.map((u) => ({ id: u.id, name: u.name }))))
+            .catch(() => {});
+        });
+    }
+  }, [projectId]);
 
   const { register, handleSubmit, formState: { errors } } = useForm({
     defaultValues: submission ? {
@@ -19,7 +42,7 @@ export function SubmissionForm({ projectId, submission, members = [], onSuccess 
       status: submission.status,
       assignedUserId: submission.assignedUserId || '',
       deadline: submission.deadline ? submission.deadline.split('T')[0] : '',
-    } : { status: 'TODO' },
+    } : { status: 'TODO', assignedUserId: '' },
   });
 
   const onSubmit = async (data) => {
@@ -31,11 +54,11 @@ export function SubmissionForm({ projectId, submission, members = [], onSuccess 
       } else {
         await api.post(`/projects/${projectId}/submissions`, payload);
       }
+      setLoading(false);
       onSuccess?.();
     } catch (err) {
-      console.error(err);
-    } finally {
       setLoading(false);
+      toast.error(err.response?.data?.message || 'Failed to save submission');
     }
   };
 
@@ -81,17 +104,15 @@ export function SubmissionForm({ projectId, submission, members = [], onSuccess 
         </div>
       </div>
 
-      {members.length > 0 && (
-        <div className="space-y-2">
-          <Label htmlFor="sub-assignee">Assign To</Label>
-          <Select id="sub-assignee" {...register('assignedUserId')}>
-            <option value="">Unassigned</option>
-            {members.map((m) => (
-              <option key={m.userId} value={m.userId}>{m.user?.name || m.userId}</option>
-            ))}
-          </Select>
-        </div>
-      )}
+      <div className="space-y-2">
+        <Label htmlFor="sub-assignee">Assign To</Label>
+        <Select id="sub-assignee" {...register('assignedUserId')}>
+          <option value="">Unassigned</option>
+          {users.map((u) => (
+            <option key={u.id} value={u.id}>{u.name}</option>
+          ))}
+        </Select>
+      </div>
 
       <div className="flex justify-end gap-3 pt-2">
         <DialogClose asChild>
