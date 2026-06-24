@@ -96,6 +96,32 @@ function ProgressSection({ submission, onUpdate }) {
   );
 }
 
+// ── Delete submission button ───────────────────────────────────────────────
+function DeleteSubmissionButton({ submissionId, projectId, onDeleted }) {
+  const [loading, setLoading] = useState(false);
+
+  const handleDelete = async () => {
+    if (!confirm('Delete this submission? This cannot be undone.')) return;
+    setLoading(true);
+    try {
+      await api.delete(`/submissions/${submissionId}`);
+      toast.success('Submission deleted');
+      onDeleted?.();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete submission');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Button size="sm" variant="outline" className="text-destructive hover:bg-destructive/10 hover:text-destructive ml-auto" onClick={handleDelete} disabled={loading}>
+      {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+      Delete
+    </Button>
+  );
+}
+
 // ── Overview tab ─────────────────────────────────────────────────────────────
 function OverviewTab({ submission, onUpdate }) {
   const { isAdminOrManager, canWrite } = useAuth();
@@ -297,6 +323,9 @@ function OverviewTab({ submission, onUpdate }) {
           <Button size="sm" variant="outline" onClick={() => doAction('status', 'Status updated')} disabled={!!actionLoading}>
             Put On Hold
           </Button>
+        )}
+        {isAdminOrManager && (
+          <DeleteSubmissionButton submissionId={submission.id} projectId={submission.project?.id} onDeleted={() => { onUpdate?.(); }} />
         )}
       </div>
     </div>
@@ -533,6 +562,36 @@ function RevisionsTab({ submission, onUpdate }) {
             <span>by {rev.createdBy?.name}</span>
             <span>{timeAgo(rev.createdAt)}</span>
           </div>
+          {/* Status update buttons for admin/manager on non-resolved revisions */}
+          {isAdminOrManager && rev.status !== 'RESOLVED' && (
+            <div className="flex gap-2 pt-1">
+              {rev.status === 'OPEN' && (
+                <button
+                  className="text-xs text-blue-600 hover:underline"
+                  onClick={async () => {
+                    try {
+                      await api.patch(`/revisions/${rev.id}/status`, { status: 'IN_PROGRESS' });
+                      onUpdate();
+                    } catch { toast.error('Failed to update revision'); }
+                  }}
+                >
+                  Mark In Progress
+                </button>
+              )}
+              <button
+                className="text-xs text-emerald-600 hover:underline"
+                onClick={async () => {
+                  try {
+                    await api.patch(`/revisions/${rev.id}/status`, { status: 'RESOLVED' });
+                    onUpdate();
+                    toast.success('Revision marked as resolved');
+                  } catch { toast.error('Failed to update revision'); }
+                }}
+              >
+                Mark Resolved
+              </button>
+            </div>
+          )}
         </div>
       ))}
 

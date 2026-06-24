@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, Plus, Edit, Download, LayoutList, Kanban,
-  Calendar, User, AlertTriangle, Trash2
+  Calendar, User, AlertTriangle, Trash2, Users, BookUser
 } from 'lucide-react';
 import { useProject } from '../hooks/useProjects';
 import { useSubmissions } from '../hooks/useSubmissions';
@@ -16,6 +16,7 @@ import { ProgressBar } from '../components/ui/ProgressBar';
 import { SubmissionCard } from '../components/submission/SubmissionCard';
 import { SubmissionForm } from '../components/submission/SubmissionForm';
 import { ProjectForm } from '../components/project/ProjectForm';
+import { MembersPanel } from '../components/project/MembersPanel';
 import { SubmissionSlideOver } from '../components/submission/SubmissionSlideOver';
 import { BoardView } from '../components/submission/BoardView';
 import { PROJECT_STATUS_CONFIG, PRIORITY_CONFIG, formatDate, isOverdue, cn } from '../lib/utils';
@@ -61,6 +62,7 @@ export default function ProjectDetailPage() {
   const [view, setView] = useState('list'); // 'list' | 'board'
   const [createOpen, setCreateOpen] = useState(false);
   const [editProjectOpen, setEditProjectOpen] = useState(false);
+  const [membersOpen, setMembersOpen] = useState(false);
   const [selectedSubId, setSelectedSubId] = useState(null);
   const [slideOpen, setSlideOpen] = useState(false);
 
@@ -181,6 +183,15 @@ export default function ProjectDetailPage() {
                       <span>Start: {formatDate(project.startDate)}</span>
                     </div>
                   )}
+                  {project.clientContact && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <BookUser className="h-4 w-4" />
+                      <span>{project.clientContact.name}</span>
+                      {project.clientContact.company && (
+                        <span className="text-xs">({project.clientContact.company})</span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -214,19 +225,38 @@ export default function ProjectDetailPage() {
         )}
 
         {isAdminOrManager && (
-          <Dialog open={editProjectOpen} onOpenChange={setEditProjectOpen}>
-            <DialogTrigger asChild>
-              <Button size="sm" variant="outline">
-                <Edit className="h-4 w-4" />
-                Edit Project
-              </Button>
-            </DialogTrigger>
-            <DialogContent title="Edit Project" description="Update project details.">
-              {project && (
-                <ProjectForm project={project} onSuccess={handleProjectUpdated} />
-              )}
-            </DialogContent>
-          </Dialog>
+          <>
+            <Dialog open={editProjectOpen} onOpenChange={setEditProjectOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" variant="outline">
+                  <Edit className="h-4 w-4" />
+                  Edit Project
+                </Button>
+              </DialogTrigger>
+              <DialogContent title="Edit Project" description="Update project details.">
+                {project && (
+                  <ProjectForm project={project} onSuccess={handleProjectUpdated} />
+                )}
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={membersOpen} onOpenChange={setMembersOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" variant="outline">
+                  <Users className="h-4 w-4" />
+                  Members
+                  {project?._count?.members > 0 && (
+                    <span className="ml-1 rounded-full bg-muted px-1.5 text-xs">{project._count.members}</span>
+                  )}
+                </Button>
+              </DialogTrigger>
+              <DialogContent title="Project Members" description="Manage who has access to this project.">
+                {project && (
+                  <MembersPanel projectId={id} picId={project.picId} />
+                )}
+              </DialogContent>
+            </Dialog>
+          </>
         )}
 
         <Button size="sm" variant="outline" onClick={handleExport}>

@@ -190,18 +190,21 @@ const addMember = async (req, res) => {
   if (!userId) return error(res, 'userId is required', 400);
 
   try {
-    const member = await prisma.projectMember.create({
-      data: {
+    const member = await prisma.projectMember.upsert({
+      where: { projectId_userId: { projectId: req.params.id, userId } },
+      create: {
         projectId: req.params.id,
         userId,
-        canCreateSubmission: canCreateSubmission || false,
+        canCreateSubmission: canCreateSubmission ?? false,
+      },
+      update: {
+        canCreateSubmission: canCreateSubmission ?? false,
       },
       include: { user: { select: { id: true, name: true, email: true, role: true } } },
     });
-    return success(res, member, 'Member added', 201);
+    return success(res, member, 'Member saved', 200);
   } catch (err) {
-    if (err.code === 'P2002') return error(res, 'User is already a member', 409);
-    return error(res, 'Failed to add member', 500);
+    return error(res, 'Failed to save member', 500);
   }
 };
 
