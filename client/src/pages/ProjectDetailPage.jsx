@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft, Plus, Edit, Download, LayoutList, Kanban,
-  Calendar, User, AlertTriangle, Loader2
+  Calendar, User, AlertTriangle
 } from 'lucide-react';
 import { useProject } from '../hooks/useProjects';
 import { useSubmissions } from '../hooks/useSubmissions';
@@ -15,6 +15,7 @@ import { Avatar } from '../components/ui/Avatar';
 import { ProgressBar } from '../components/ui/ProgressBar';
 import { SubmissionCard } from '../components/submission/SubmissionCard';
 import { SubmissionForm } from '../components/submission/SubmissionForm';
+import { ProjectForm } from '../components/project/ProjectForm';
 import { SubmissionSlideOver } from '../components/submission/SubmissionSlideOver';
 import { BoardView } from '../components/submission/BoardView';
 import { PROJECT_STATUS_CONFIG, PRIORITY_CONFIG, formatDate, isOverdue, cn } from '../lib/utils';
@@ -59,6 +60,7 @@ export default function ProjectDetailPage() {
 
   const [view, setView] = useState('list'); // 'list' | 'board'
   const [createOpen, setCreateOpen] = useState(false);
+  const [editProjectOpen, setEditProjectOpen] = useState(false);
   const [selectedSubId, setSelectedSubId] = useState(null);
   const [slideOpen, setSlideOpen] = useState(false);
 
@@ -77,6 +79,12 @@ export default function ProjectDetailPage() {
   const handleSubUpdated = () => {
     refetchSubmissions();
     refetchProject();
+  };
+
+  const handleProjectUpdated = () => {
+    setEditProjectOpen(false);
+    refetchProject();
+    toast.success('Project updated');
   };
 
   const handleExport = async () => {
@@ -191,6 +199,22 @@ export default function ProjectDetailPage() {
                 members={project?.members || []}
                 onSuccess={handleSubCreated}
               />
+            </DialogContent>
+          </Dialog>
+        )}
+
+        {isAdminOrManager && (
+          <Dialog open={editProjectOpen} onOpenChange={setEditProjectOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm" variant="outline">
+                <Edit className="h-4 w-4" />
+                Edit Project
+              </Button>
+            </DialogTrigger>
+            <DialogContent title="Edit Project" description="Update project details.">
+              {project && (
+                <ProjectForm project={project} onSuccess={handleProjectUpdated} />
+              )}
             </DialogContent>
           </Dialog>
         )}

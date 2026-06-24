@@ -4,7 +4,7 @@ const { success, error } = require('../utils/response');
 const prisma = new PrismaClient();
 
 const projectInclude = {
-  pic: { select: { id: true, name: true, email: true } },
+  pic: { select: { id: true, name: true, email: true, division: { select: { id: true, name: true } } } },
   createdBy: { select: { id: true, name: true } },
   clientContact: { select: { id: true, name: true, company: true, email: true, phone: true } },
   _count: { select: { submissions: true, members: true } },
@@ -51,11 +51,14 @@ const getProjects = async (req, res) => {
 };
 
 const createProject = async (req, res) => {
-  const { title, description, status, priority, startDate, deadline, picId } = req.body;
+  const { title, description, status, priority, startDate, deadline, picId, clientContactId } = req.body;
 
-  if (!title || !deadline || !picId) {
-    return error(res, 'title, deadline and picId are required', 400);
+  if (!title || !deadline) {
+    return error(res, 'title and deadline are required', 400);
   }
+
+  // Creator is automatically the PIC
+  const effectivePicId = req.user.id;
 
   try {
     const project = await prisma.project.create({
@@ -66,17 +69,15 @@ const createProject = async (req, res) => {
         priority: priority || 'MEDIUM',
         startDate: startDate ? new Date(startDate) : null,
         deadline: new Date(deadline),
-        picId,
+        picId: effectivePicId,
         createdById: req.user.id,
+        clientContactId: clientContactId || null,
       },
       include: projectInclude,
     });
 
-    // Auto-add creator and PIC as members
+    // Auto-add creator as member
     const membersToAdd = [{ projectId: project.id, userId: req.user.id, canCreateSubmission: true }];
-    if (picId !== req.user.id) {
-      membersToAdd.push({ projectId: project.id, userId: picId, canCreateSubmission: true });
-    }
     await prisma.projectMember.createMany({ data: membersToAdd, skipDuplicates: true });
 
     await logActivity(req.user.id, 'PROJECT_CREATED', `Project "${title}" created`, project.id);

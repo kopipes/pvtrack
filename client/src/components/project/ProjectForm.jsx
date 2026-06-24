@@ -7,12 +7,10 @@ import { Label } from '../ui/Label';
 import { Select } from '../ui/Select';
 import { Textarea } from '../ui/Textarea';
 import { DialogClose } from '../ui/Dialog';
-import { Avatar } from '../ui/Avatar';
 import api from '../../lib/axios';
 import { toast } from 'sonner';
 
 export function ProjectForm({ project, onSuccess }) {
-  const [users, setUsers] = useState([]);
   const [clientContacts, setClientContacts] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -22,7 +20,6 @@ export function ProjectForm({ project, onSuccess }) {
       description: project.description || '',
       status: project.status,
       priority: project.priority,
-      picId: project.picId,
       clientContactId: project.clientContactId || '',
       startDate: project.startDate ? project.startDate.split('T')[0] : '',
       deadline: project.deadline ? project.deadline.split('T')[0] : '',
@@ -30,16 +27,7 @@ export function ProjectForm({ project, onSuccess }) {
   });
 
   useEffect(() => {
-    // Fetch users (for PIC selector) and client contacts in parallel
-    Promise.all([
-      api.get('/users', { params: { isActive: 'true' } }),
-      api.get('/client-contacts'),
-    ])
-      .then(([usersRes, contactsRes]) => {
-        setUsers(usersRes.data.data);
-        setClientContacts(contactsRes.data.data);
-      })
-      .catch(() => {});
+    api.get('/client-contacts').then((res) => setClientContacts(res.data.data)).catch(() => {});
   }, []);
 
   const onSubmit = async (data) => {
@@ -121,19 +109,6 @@ export function ProjectForm({ project, onSuccess }) {
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="picId">Person in Charge (PIC) *</Label>
-        <Select id="picId" {...register('picId', { required: 'PIC is required' })}>
-          <option value="">Select PIC...</option>
-          {users.map((u) => (
-            <option key={u.id} value={u.id}>
-              {u.name} ({u.role}{u.division ? ` — ${u.division.name}` : ''})
-            </option>
-          ))}
-        </Select>
-        {errors.picId && <p className="text-xs text-destructive">{errors.picId.message}</p>}
-      </div>
-
-      <div className="space-y-2">
         <Label htmlFor="clientContactId">Client Contact</Label>
         <Select id="clientContactId" {...register('clientContactId')}>
           <option value="">No client contact</option>
@@ -144,6 +119,12 @@ export function ProjectForm({ project, onSuccess }) {
           ))}
         </Select>
       </div>
+
+      {!project && (
+        <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2">
+          You will automatically be set as the PIC for this project.
+        </p>
+      )}
 
       <div className="flex justify-end gap-3 pt-2">
         <DialogClose asChild>
