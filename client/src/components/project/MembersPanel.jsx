@@ -173,7 +173,7 @@ export function MembersPanel({ projectId, picId }) {
             <option value="">Select a user...</option>
             {availableUsers.map((u) => (
               <option key={u.id} value={u.id}>
-                {u.name} ({u.role}{u.division ? ` — ${u.division.name}` : ''})
+                {u.name} ({u.role}{u.divisions?.length > 0 ? ` — ${u.divisions.map(d => d.division?.name).join(', ')}` : ''})
               </option>
             ))}
           </Select>

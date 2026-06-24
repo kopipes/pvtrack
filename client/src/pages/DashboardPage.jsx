@@ -91,11 +91,11 @@ function OngoingProjectCard({ project }) {
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Avatar name={project.pic?.name} size="xs" />
                 <span>{project.pic?.name}</span>
-                {project.pic?.division && (
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs">
-                    {project.pic.division.name}
+                {project.pic?.divisions?.map((ud) => (
+                  <span key={ud.division?.id} className="rounded-full bg-muted px-2 py-0.5 text-xs">
+                    {ud.division?.name}
                   </span>
-                )}
+                ))}
               </div>
             </div>
           </div>

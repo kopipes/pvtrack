@@ -121,9 +121,19 @@ export default function UsersTab() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-4 hidden md:table-cell text-muted-foreground">
-                      {user.division?.name || <span className="italic text-xs">No division</span>}
-                    </td>
+                      <td className="px-4 py-4 hidden md:table-cell">
+                          {user.divisions?.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {user.divisions.map((ud) => (
+                                <span key={ud.divisionId || ud.division?.id} className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs">
+                                  {ud.division?.name}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="italic text-xs text-muted-foreground">No division</span>
+                          )}
+                        </td>
                     <td className="px-4 py-4">
                       <span className={cn('inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium', ROLE_COLOR[user.role])}>
                         {user.role}

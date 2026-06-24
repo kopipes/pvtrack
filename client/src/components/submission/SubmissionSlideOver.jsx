@@ -152,7 +152,11 @@ function OverviewTab({ submission, onUpdate }) {
               .then((r) => setUsers(r.data.data.map((u) => ({ id: u.id, name: u.name }))));
           }
         })
-        .catch(() => {});
+        .catch(() => {
+          api.get('/users', { params: { isActive: 'true' } })
+            .then((r) => setUsers(r.data.data.map((u) => ({ id: u.id, name: u.name }))))
+            .catch(() => {});
+        });
     }
   }, [editing]);
 

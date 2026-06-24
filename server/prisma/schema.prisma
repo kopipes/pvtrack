@@ -21,7 +21,18 @@ model Division {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  users User[]
+  userDivisions UserDivision[]
+}
+
+model UserDivision {
+  id         String @id @default(uuid())
+  userId     String
+  divisionId String
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  division Division @relation(fields: [divisionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, divisionId])
 }
 
 model ClientContact {
@@ -46,11 +57,10 @@ model User {
   passwordHash String
   role         String   @default("USER")
   isActive     Boolean  @default(true)
-  divisionId   String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  division        Division?       @relation(fields: [divisionId], references: [id])
+  divisions       UserDivision[]
   projectsPIC     Project[]       @relation("PIC")
   projectsCreated Project[]       @relation("Creator")
   submissions     Submission[]

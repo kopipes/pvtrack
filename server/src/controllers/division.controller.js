@@ -1,15 +1,15 @@
-
 const { success, error } = require('../utils/response');
-
 const prisma = require('../lib/prisma');
 
 const getDivisions = async (req, res) => {
   try {
     const divisions = await prisma.division.findMany({
-      include: { _count: { select: { users: true } } },
+      include: { _count: { select: { userDivisions: true } } },
       orderBy: { name: 'asc' },
     });
-    return success(res, divisions);
+    // Normalize count field name
+    const result = divisions.map((d) => ({ ...d, _count: { users: d._count.userDivisions } }));
+    return success(res, result);
   } catch (err) {
     return error(res, 'Failed to fetch divisions', 500);
   }
@@ -20,12 +20,19 @@ const getDivision = async (req, res) => {
     const division = await prisma.division.findUnique({
       where: { id: req.params.id },
       include: {
-        users: { select: { id: true, name: true, email: true, role: true, isActive: true } },
-        _count: { select: { users: true } },
+        userDivisions: {
+          include: { user: { select: { id: true, name: true, email: true, role: true, isActive: true } } },
+        },
+        _count: { select: { userDivisions: true } },
       },
     });
     if (!division) return error(res, 'Division not found', 404);
-    return success(res, division);
+    const result = {
+      ...division,
+      users: division.userDivisions.map((ud) => ud.user),
+      _count: { users: division._count.userDivisions },
+    };
+    return success(res, result);
   } catch (err) {
     return error(res, 'Failed to fetch division', 500);
   }
@@ -37,9 +44,9 @@ const createDivision = async (req, res) => {
   try {
     const division = await prisma.division.create({
       data: { name: name.trim(), description: description || null },
-      include: { _count: { select: { users: true } } },
+      include: { _count: { select: { userDivisions: true } } },
     });
-    return success(res, division, 'Division created', 201);
+    return success(res, { ...division, _count: { users: division._count.userDivisions } }, 'Division created', 201);
   } catch (err) {
     if (err.code === 'P2002') return error(res, 'Division name already exists', 409);
     return error(res, 'Failed to create division', 500);
@@ -56,9 +63,9 @@ const updateDivision = async (req, res) => {
         ...(description !== undefined && { description }),
         ...(isActive !== undefined && { isActive }),
       },
-      include: { _count: { select: { users: true } } },
+      include: { _count: { select: { userDivisions: true } } },
     });
-    return success(res, division, 'Division updated');
+    return success(res, { ...division, _count: { users: division._count.userDivisions } }, 'Division updated');
   } catch (err) {
     if (err.code === 'P2025') return error(res, 'Division not found', 404);
     if (err.code === 'P2002') return error(res, 'Division name already exists', 409);
@@ -68,11 +75,7 @@ const updateDivision = async (req, res) => {
 
 const deleteDivision = async (req, res) => {
   try {
-    // Unlink users before delete
-    await prisma.user.updateMany({
-      where: { divisionId: req.params.id },
-      data: { divisionId: null },
-    });
+    // UserDivision rows cascade delete automatically
     await prisma.division.delete({ where: { id: req.params.id } });
     return success(res, null, 'Division deleted');
   } catch (err) {

@@ -15,6 +15,7 @@ async function main() {
   await prisma.submission.deleteMany();
   await prisma.projectMember.deleteMany();
   await prisma.project.deleteMany();
+  await prisma.userDivision.deleteMany();
   await prisma.user.deleteMany();
   await prisma.division.deleteMany();
   await prisma.clientContact.deleteMany();
@@ -72,19 +73,34 @@ async function main() {
 
   // Users
   const admin = await prisma.user.create({
-    data: { name: 'Admin User', email: 'admin@pvtrack.com', passwordHash, role: 'ADMIN', divisionId: divPM.id },
+    data: {
+      name: 'Admin User', email: 'admin@pvtrack.com', passwordHash, role: 'ADMIN',
+      divisions: { create: [{ divisionId: divPM.id }] },
+    },
   });
   const manager = await prisma.user.create({
-    data: { name: 'Sarah Manager', email: 'manager@pvtrack.com', passwordHash, role: 'MANAGER', divisionId: divPM.id },
+    data: {
+      name: 'Sarah Manager', email: 'manager@pvtrack.com', passwordHash, role: 'MANAGER',
+      divisions: { create: [{ divisionId: divPM.id }] },
+    },
   });
   const user1 = await prisma.user.create({
-    data: { name: 'Alex Developer', email: 'alex@pvtrack.com', passwordHash, role: 'USER', divisionId: divEngineering.id },
+    data: {
+      name: 'Alex Developer', email: 'alex@pvtrack.com', passwordHash, role: 'USER',
+      divisions: { create: [{ divisionId: divEngineering.id }] },
+    },
   });
   const user2 = await prisma.user.create({
-    data: { name: 'Jordan Designer', email: 'jordan@pvtrack.com', passwordHash, role: 'USER', divisionId: divDesign.id },
+    data: {
+      name: 'Jordan Designer', email: 'jordan@pvtrack.com', passwordHash, role: 'USER',
+      divisions: { create: [{ divisionId: divDesign.id }] },
+    },
   });
   const viewer = await prisma.user.create({
-    data: { name: 'Pat Viewer', email: 'viewer@pvtrack.com', passwordHash, role: 'VIEWER', divisionId: divMarketing.id },
+    data: {
+      name: 'Pat Viewer', email: 'viewer@pvtrack.com', passwordHash, role: 'VIEWER',
+      divisions: { create: [{ divisionId: divMarketing.id }] },
+    },
   });
 
   console.log('Users created.');

@@ -17,12 +17,12 @@ const getSummary = async (req, res) => {
     }
     const projectWhere = {};
     if (dateFrom || dateTo) projectWhere.deadline = dateFilter;
-    // Filter by PIC's division
-    if (divisionId) projectWhere.pic = { divisionId };
+    // Filter by PIC's division (via join table)
+    if (divisionId) projectWhere.pic = { divisions: { some: { divisionId } } };
 
     const submissionWhere = {};
     if (dateFrom || dateTo) submissionWhere.deadline = dateFilter;
-    if (divisionId) submissionWhere.assignedUser = { divisionId };
+    if (divisionId) submissionWhere.assignedUser = { divisions: { some: { divisionId } } };
 
     const [totalProjects, activeProjects, totalSubmissions] = await Promise.all([
       prisma.project.count({ where: projectWhere }),
@@ -62,7 +62,7 @@ const getSummary = async (req, res) => {
     const ongoingProjects = await prisma.project.findMany({
       where: { ...projectWhere, status: 'ACTIVE' },
       include: {
-        pic: { select: { id: true, name: true, division: { select: { id: true, name: true } } } },
+        pic: { select: { id: true, name: true, divisions: { include: { division: { select: { id: true, name: true } } } } } },
         createdBy: { select: { id: true, name: true } },
         submissions: {
           include: {
@@ -79,7 +79,7 @@ const getSummary = async (req, res) => {
       assignedUserId: { not: null },
       project: { status: 'ACTIVE', ...projectWhere },
     };
-    if (divisionId) contributorWhere.assignedUser = { divisionId };
+    if (divisionId) contributorWhere.assignedUser = { divisions: { some: { divisionId } } };
     const submissionContributors = await prisma.submission.groupBy({
       by: ['assignedUserId'],
       where: contributorWhere,
@@ -92,7 +92,7 @@ const getSummary = async (req, res) => {
     const contributorIds = submissionContributors.map((c) => c.assignedUserId).filter(Boolean);
     const contributorUsers = await prisma.user.findMany({
       where: { id: { in: contributorIds } },
-      select: { id: true, name: true, division: { select: { name: true } } },
+      select: { id: true, name: true, divisions: { include: { division: { select: { name: true } } } } },
     });
     const contributorSubmissions = await prisma.submission.findMany({
       where: {
@@ -123,7 +123,7 @@ const getSummary = async (req, res) => {
 
     // Submissions needing attention
     const needAttentionBase = {};
-    if (divisionId) needAttentionBase.assignedUser = { divisionId };
+    if (divisionId) needAttentionBase.assignedUser = { divisions: { some: { divisionId } } };
     if (dateFrom || dateTo) needAttentionBase.deadline = dateFilter;
     const needAttention = await prisma.submission.findMany({
       where: {
@@ -145,7 +145,7 @@ const getSummary = async (req, res) => {
     const weekEnd = new Date();
     weekEnd.setDate(weekEnd.getDate() + 7);
     const deadlinesWhere = {};
-    if (divisionId) deadlinesWhere.assignedUser = { divisionId };
+    if (divisionId) deadlinesWhere.assignedUser = { divisions: { some: { divisionId } } };
     const deadlinesThisWeek = await prisma.submission.findMany({
       where: {
         ...deadlinesWhere,

@@ -50,8 +50,8 @@ const me = async (req, res) => {
       where: { id: req.user.id },
       select: {
         id: true, name: true, email: true, role: true, isActive: true,
-        createdAt: true, divisionId: true,
-        division: { select: { id: true, name: true } },
+        createdAt: true,
+        divisions: { include: { division: { select: { id: true, name: true } } } },
       },
     });
     if (!user) return error(res, 'User not found', 404);

@@ -4,7 +4,7 @@ const { success, error } = require('../utils/response');
 const prisma = require('../lib/prisma');
 
 const projectInclude = {
-  pic: { select: { id: true, name: true, email: true, division: { select: { id: true, name: true } } } },
+  pic: { select: { id: true, name: true, email: true, divisions: { include: { division: { select: { id: true, name: true } } } } } },
   createdBy: { select: { id: true, name: true } },
   clientContact: { select: { id: true, name: true, company: true, email: true, phone: true } },
   _count: { select: { submissions: true, members: true } },

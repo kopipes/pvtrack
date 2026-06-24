@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { Loader2 } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import api from '../../lib/axios';
 import { Button } from '../ui/Button';
@@ -8,30 +8,40 @@ import { Input } from '../ui/Input';
 import { Label } from '../ui/Label';
 import { Select } from '../ui/Select';
 import { DialogClose } from '../ui/Dialog';
+import { cn } from '../../lib/utils';
 
 export default function UserForm({ user, onSuccess }) {
   const [divisions, setDivisions] = useState([]);
   const [loading, setLoading] = useState(false);
+  // Selected division IDs (array)
+  const [selectedDivisions, setSelectedDivisions] = useState(
+    user ? (user.divisions || []).map((d) => d.divisionId || d.division?.id).filter(Boolean) : []
+  );
 
   const { register, handleSubmit, formState: { errors } } = useForm({
     defaultValues: user ? {
       name: user.name,
       email: user.email,
       role: user.role,
-      divisionId: user.divisionId || '',
       password: '',
-    } : { role: 'USER', divisionId: '' },
+    } : { role: 'USER' },
   });
 
   useEffect(() => {
     api.get('/divisions').then((res) => setDivisions(res.data.data)).catch(() => {});
   }, []);
 
+  const toggleDivision = (id) => {
+    setSelectedDivisions((prev) =>
+      prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]
+    );
+  };
+
   const onSubmit = async (data) => {
     setLoading(true);
     try {
-      const payload = { ...data, divisionId: data.divisionId || null };
-      if (!payload.password) delete payload.password; // Don't send empty password on edit
+      const payload = { ...data, divisionIds: selectedDivisions };
+      if (!payload.password) delete payload.password;
       if (user) {
         await api.put(`/users/${user.id}`, payload);
       } else {
@@ -71,32 +81,52 @@ export default function UserForm({ user, onSuccess }) {
           id="u-password" type="password" placeholder={user ? '••••••••' : 'Min 8 characters'}
           {...register('password', {
             ...(!user && { required: 'Password is required' }),
-            minLength: { value: 8, message: 'Min 8 characters' },
             validate: (v) => !v || v.length >= 8 || 'Min 8 characters',
           })}
         />
         {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="u-role">Role</Label>
-          <Select id="u-role" {...register('role')}>
-            <option value="ADMIN">Admin</option>
-            <option value="MANAGER">Manager</option>
-            <option value="USER">User</option>
-            <option value="VIEWER">Viewer</option>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="u-division">Division</Label>
-          <Select id="u-division" {...register('divisionId')}>
-            <option value="">No Division</option>
-            {divisions.map((d) => (
+      <div className="space-y-2">
+        <Label htmlFor="u-role">Role</Label>
+        <Select id="u-role" {...register('role')}>
+          <option value="ADMIN">Admin</option>
+          <option value="MANAGER">Manager</option>
+          <option value="USER">User</option>
+          <option value="VIEWER">Viewer</option>
+        </Select>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Divisions</Label>
+        {/* Selected tags */}
+        {selectedDivisions.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {selectedDivisions.map((id) => {
+              const div = divisions.find((d) => d.id === id);
+              return div ? (
+                <span key={id} className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary px-2 py-0.5 text-xs font-medium">
+                  {div.name}
+                  <button type="button" onClick={() => toggleDivision(id)} className="hover:text-destructive">
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ) : null;
+            })}
+          </div>
+        )}
+        {/* Dropdown to add */}
+        <Select
+          value=""
+          onChange={(e) => { if (e.target.value) toggleDivision(e.target.value); }}
+        >
+          <option value="">Add a division...</option>
+          {divisions
+            .filter((d) => !selectedDivisions.includes(d.id))
+            .map((d) => (
               <option key={d.id} value={d.id}>{d.name}</option>
             ))}
-          </Select>
-        </div>
+        </Select>
       </div>
 
       <div className="flex justify-end gap-3 pt-2">

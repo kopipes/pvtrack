@@ -69,7 +69,6 @@ function DivisionRow({ division, isAdmin, onEdit, onDelete, onRefresh }) {
   const loadMembers = async () => {
     if (expanded) { setExpanded(false); return; }
     setExpanded(true);
-    if (members.length > 0) return;
     setLoadingMembers(true);
     try {
       const res = await api.get(`/divisions/${division.id}`);
