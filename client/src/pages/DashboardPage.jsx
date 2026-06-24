@@ -209,8 +209,10 @@ function ContributorRow({ contributor: c, rank, maxCount }) {
           <div className="flex items-center justify-between mb-1">
             <div className="min-w-0">
               <span className="text-sm font-medium">{c.user.name}</span>
-              {c.user.division && (
-                <span className="ml-2 text-xs text-muted-foreground">{c.user.division.name}</span>
+              {c.user.divisions?.length > 0 && (
+                <span className="ml-2 text-xs text-muted-foreground">
+                  {c.user.divisions.map(d => d.division?.name).filter(Boolean).join(', ')}
+                </span>
               )}
             </div>
             <div className="flex items-center gap-2 ml-2 shrink-0">

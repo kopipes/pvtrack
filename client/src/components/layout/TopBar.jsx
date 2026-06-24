@@ -20,6 +20,14 @@ const BREADCRUMBS = {
   '/master-data': [{ label: 'Master Data' }],
 };
 
+function getBreadcrumbs(pathname) {
+  const parts = pathname.split('/').filter(Boolean);
+  if (parts[0] === 'projects' && parts[1]) {
+    return [{ label: 'Projects', path: '/projects' }, { label: 'Project Detail' }];
+  }
+  return BREADCRUMBS['/' + (parts[0] || '')] || [{ label: 'Page' }];
+}
+
 // ── Notifications dropdown ─────────────────────────────────────────
 function NotificationsDropdown({ onClose }) {
   const navigate = useNavigate();
@@ -206,8 +214,7 @@ export function TopBar({ onMobileMenuToggle }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const bellRef = useRef(null);
 
-  const basePath = '/' + location.pathname.split('/')[1];
-  const breadcrumbs = BREADCRUMBS[basePath] || [{ label: 'Page' }];
+  const breadcrumbs = getBreadcrumbs(location.pathname);
 
   // Close bell dropdown on outside click
   useEffect(() => {
@@ -240,7 +247,9 @@ export function TopBar({ onMobileMenuToggle }) {
           {breadcrumbs.map((b, i) => (
             <span key={i}>
               {i > 0 && <span className="text-muted-foreground mx-1">/</span>}
-              <span>{b.label}</span>
+              {b.path
+                ? <a href={b.path} className="hover:text-primary transition-colors">{b.label}</a>
+                : <span>{b.label}</span>}
             </span>
           ))}
         </h1>

@@ -58,6 +58,11 @@ const createSubmission = async (req, res) => {
   if (!title) return error(res, 'title is required', 400);
 
   try {
+    // VIEWER can never create submissions
+    if (req.user.role === 'VIEWER') {
+      return error(res, 'Viewers cannot create submissions', 403);
+    }
+
     // Check if user has permission (admin, manager, or canCreateSubmission member)
     if (req.user.role === 'USER') {
       const member = await prisma.projectMember.findUnique({
