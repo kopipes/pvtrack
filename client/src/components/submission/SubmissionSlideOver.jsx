@@ -602,6 +602,42 @@ function RevisionsTab({ submission, onUpdate }) {
             <span>by {rev.createdBy?.name}</span>
             <span>{timeAgo(rev.createdAt)}</span>
           </div>
+          {/* Per-revision action buttons */}
+          {rev.status !== 'RESOLVED' && (
+            <div className="flex gap-2 pt-1 border-t border-border">
+              {canWrite && ['OPEN', 'IN_PROGRESS'].includes(rev.status) && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="text-xs"
+                  onClick={async () => {
+                    try {
+                      await api.patch(`/revisions/${rev.id}/status`, { status: 'IN_PROGRESS' });
+                      onUpdate();
+                      toast.success(`Revision #${rev.revisionNumber} submitted`);
+                    } catch { toast.error('Failed to update revision'); }
+                  }}
+                >
+                  Submit
+                </Button>
+              )}
+              {isAdminOrManager && rev.status === 'IN_PROGRESS' && (
+                <Button
+                  size="sm"
+                  className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                  onClick={async () => {
+                    try {
+                      await api.patch(`/revisions/${rev.id}/status`, { status: 'RESOLVED' });
+                      onUpdate();
+                      toast.success(`Revision #${rev.revisionNumber} approved`);
+                    } catch { toast.error('Failed to update revision'); }
+                  }}
+                >
+                  Approve
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       ))}
     </div>
