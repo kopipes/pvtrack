@@ -311,7 +311,7 @@ function OverviewTab({ submission, onUpdate }) {
 
       {/* Action buttons */}
       <div className="flex flex-wrap gap-2 pt-2 border-t border-border">
-        {canWrite && ['TODO', 'IN_PROGRESS', 'REVISION'].includes(submission.status) && (
+        {canWrite && ['TODO', 'IN_PROGRESS'].includes(submission.status) && (
           <Button size="sm" onClick={() => doAction('submit', 'Work submitted for review')} disabled={!!actionLoading}>
             {actionLoading === 'submit' && <Loader2 className="h-3 w-3 animate-spin" />}
             Submit Work
