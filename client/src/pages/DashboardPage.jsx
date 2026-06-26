@@ -287,6 +287,8 @@ function SubmissionTimeline({ divisionId }) {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tooltip, setTooltip] = useState(null);
+  const [rangeFrom, setRangeFrom] = useState('');
+  const [rangeTo, setRangeTo] = useState('');
 
   useEffect(() => {
     setLoading(true);
@@ -319,7 +321,7 @@ function SubmissionTimeline({ divisionId }) {
     );
   }
 
-  // Compute global date range
+  // Compute auto date range from data
   const allSubmissions = rows.flatMap((r) => r.submissions);
   const allDates = allSubmissions.flatMap((s) => [
     s.createdAt ? new Date(s.createdAt) : null,
@@ -328,13 +330,18 @@ function SubmissionTimeline({ divisionId }) {
   ]).filter(Boolean);
 
   const now = new Date();
-  const minDate = new Date(Math.min(...allDates.map((d) => d.getTime()), now.getTime()));
-  const maxDate = new Date(Math.max(...allDates.map((d) => d.getTime()), now.getTime()));
-  const totalMs = maxDate.getTime() - minDate.getTime() || 86400000;
-  const padMs = totalMs * 0.05;
-  const rangeStart = new Date(minDate.getTime() - padMs);
-  const rangeEnd = new Date(maxDate.getTime() + padMs);
-  const rangeMs = rangeEnd.getTime() - rangeStart.getTime();
+  const autoMin = new Date(Math.min(...allDates.map((d) => d.getTime()), now.getTime()));
+  const autoMax = new Date(Math.max(...allDates.map((d) => d.getTime()), now.getTime()));
+  const autoTotalMs = autoMax.getTime() - autoMin.getTime() || 86400000;
+  const autoPad = autoTotalMs * 0.05;
+
+  // Use user-set range if provided, else fall back to auto
+  const rangeStart = rangeFrom ? new Date(rangeFrom) : new Date(autoMin.getTime() - autoPad);
+  const rangeEnd = rangeTo ? new Date(new Date(rangeTo).setHours(23, 59, 59, 999)) : new Date(autoMax.getTime() + autoPad);
+  const rangeMs = rangeEnd.getTime() - rangeStart.getTime() || 1;
+
+  const autoFromStr = new Date(autoMin.getTime() - autoPad).toLocaleDateString('en-CA');
+  const autoToStr = new Date(autoMax.getTime() + autoPad).toLocaleDateString('en-CA');
 
   const toPercent = (date) => {
     if (!date) return null;
@@ -359,6 +366,35 @@ function SubmissionTimeline({ divisionId }) {
           {tooltip.content}
         </div>
       )}
+
+      {/* Date range controls */}
+      <div className="flex flex-wrap items-center gap-2 mb-4 pb-3 border-b border-border">
+        <Calendar className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        <span className="text-xs text-muted-foreground">View range:</span>
+        <Input
+          type="date"
+          value={rangeFrom}
+          onChange={(e) => setRangeFrom(e.target.value)}
+          className="w-36 text-xs h-7 px-2"
+          placeholder={autoFromStr}
+        />
+        <span className="text-xs text-muted-foreground">to</span>
+        <Input
+          type="date"
+          value={rangeTo}
+          onChange={(e) => setRangeTo(e.target.value)}
+          className="w-36 text-xs h-7 px-2"
+          placeholder={autoToStr}
+        />
+        {(rangeFrom || rangeTo) && (
+          <button
+            className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+            onClick={() => { setRangeFrom(''); setRangeTo(''); }}
+          >
+            <X className="h-3 w-3" /> Reset
+          </button>
+        )}
+      </div>
 
       {/* Date axis */}
       <div className="flex mb-3 pl-32">
