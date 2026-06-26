@@ -449,41 +449,62 @@ function SubmissionTimeline({ divisionId }) {
                         />
                       </div>
 
-                      {/* Revision diamonds */}
-                      {sub.revisions.map((rev) => {
-                        const revPct = toPercent(rev.createdAt);
-                        if (revPct === null || revPct < 0 || revPct > 100) return null;
-                        return (
-                          <div
-                            key={rev.id}
-                            className="absolute z-20 cursor-pointer"
-                            style={{
-                              left: `${revPct}%`,
-                              top: '50%',
-                              transform: 'translate(-50%, -50%) rotate(45deg)',
-                              width: 10,
-                              height: 10,
-                              backgroundColor: rev.status === 'RESOLVED' ? '#3b82f6' : '#f59e0b',
-                              border: '2px solid white',
-                            }}
-                            onMouseEnter={(e) => {
-                              const rect = e.currentTarget.getBoundingClientRect();
-                              setTooltip({
-                                x: rect.right,
-                                y: rect.top,
-                                content: (
-                                  <div className="space-y-1">
-                                    <p className="font-semibold text-amber-600">Revision #{rev.revisionNumber}</p>
-                                    <p className="text-muted-foreground">{formatDate(rev.createdAt)}</p>
-                                    <p className="line-clamp-3">{rev.feedback}</p>
-                                  </div>
-                                ),
-                              });
-                            }}
-                            onMouseLeave={() => setTooltip(null)}
-                          />
-                        );
-                      })}
+                      {/* Revision diamonds — group by same date position */}
+                      {(() => {
+                        // Group revisions by their pixel-percentage position (rounded to 1 decimal)
+                        const groups = {};
+                        sub.revisions.forEach((rev) => {
+                          const revPct = toPercent(rev.createdAt);
+                          if (revPct === null || revPct < 0 || revPct > 100) return;
+                          const key = Math.round(revPct * 10) / 10;
+                          if (!groups[key]) groups[key] = [];
+                          groups[key].push(rev);
+                        });
+
+                        return Object.entries(groups).map(([pctKey, revGroup]) => {
+                          const pct = parseFloat(pctKey);
+                          const allResolved = revGroup.every((r) => r.status === 'RESOLVED');
+                          const hasMultiple = revGroup.length > 1;
+                          return (
+                            <div
+                              key={pctKey}
+                              className="absolute z-20 cursor-pointer"
+                              style={{
+                                left: `${pct}%`,
+                                top: '50%',
+                                transform: 'translate(-50%, -50%) rotate(45deg)',
+                                width: hasMultiple ? 13 : 10,
+                                height: hasMultiple ? 13 : 10,
+                                backgroundColor: allResolved ? '#3b82f6' : '#f59e0b',
+                                border: '2px solid white',
+                              }}
+                              onMouseEnter={(e) => {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                setTooltip({
+                                  x: rect.right,
+                                  y: rect.top,
+                                  content: (
+                                    <div className="space-y-2">
+                                      {revGroup.map((rev) => (
+                                        <div key={rev.id} className="space-y-0.5">
+                                          <p className={cn('font-semibold', rev.status === 'RESOLVED' ? 'text-blue-500' : 'text-amber-500')}>
+                                            Revision #{rev.revisionNumber}
+                                            <span className="ml-2 font-normal text-muted-foreground text-[10px]">{rev.status}</span>
+                                          </p>
+                                          <p className="text-muted-foreground text-[10px]">{formatDate(rev.createdAt)}</p>
+                                          <p className="line-clamp-2">{rev.feedback}</p>
+                                          {revGroup.length > 1 && <div className="border-t border-border pt-1 mt-1" />}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ),
+                                });
+                              }}
+                              onMouseLeave={() => setTooltip(null)}
+                            />
+                          );
+                        });
+                      })()}
 
                       {/* Deadline marker */}
                       {endPct !== null && endPct >= 0 && endPct <= 100 && (
