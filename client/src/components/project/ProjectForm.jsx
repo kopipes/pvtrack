@@ -39,11 +39,11 @@ export function ProjectForm({ project, onSuccess }) {
       } else {
         await api.post('/projects', payload);
       }
-      setLoading(false);
       onSuccess?.();
     } catch (err) {
-      setLoading(false);
       toast.error(err.response?.data?.message || 'Failed to save project');
+    } finally {
+      setLoading(false);
     }
   };
 

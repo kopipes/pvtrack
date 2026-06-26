@@ -1,5 +1,6 @@
 
 const { success, error } = require('../utils/response');
+const { logActivity } = require('../utils/activityLog');
 
 const prisma = require('../lib/prisma');
 
@@ -8,16 +9,6 @@ const projectInclude = {
   createdBy: { select: { id: true, name: true } },
   clientContact: { select: { id: true, name: true, company: true, email: true, phone: true } },
   _count: { select: { submissions: true, members: true } },
-};
-
-const logActivity = async (userId, action, description, projectId = null, submissionId = null) => {
-  try {
-    await prisma.activityLog.create({
-      data: { userId, projectId, submissionId, action, description },
-    });
-  } catch (e) {
-    console.error('Activity log error:', e);
-  }
 };
 
 const getProjects = async (req, res) => {

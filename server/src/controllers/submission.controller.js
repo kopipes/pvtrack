@@ -1,5 +1,6 @@
 
 const { success, error } = require('../utils/response');
+const { logActivity } = require('../utils/activityLog');
 
 const prisma = require('../lib/prisma');
 
@@ -7,16 +8,6 @@ const submissionInclude = {
   assignedUser: { select: { id: true, name: true, email: true } },
   _count: { select: { checklistItems: true, notes: true, revisions: true, attachments: true } },
   checklistItems: { orderBy: { createdAt: 'asc' } },
-};
-
-const logActivity = async (userId, action, description, projectId = null, submissionId = null) => {
-  try {
-    await prisma.activityLog.create({
-      data: { userId, projectId, submissionId, action, description },
-    });
-  } catch (e) {
-    console.error('Activity log error:', e);
-  }
 };
 
 // Recalculate project progress from all its submissions

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Pencil, Trash2, Search, Mail, Phone, Building2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Mail, Phone, Building2, Loader2 } from 'lucide-react';
 import api from '../../lib/axios';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../ui/Card';
@@ -13,7 +13,6 @@ import { Avatar } from '../ui/Avatar';
 import { cn } from '../../lib/utils';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
-import { Loader2 } from 'lucide-react';
 
 function ClientContactForm({ contact, onSuccess }) {
   const [loading, setLoading] = useState(false);

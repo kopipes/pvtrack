@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { getProjects, createProject, getProject, updateProject, deleteProject, getMembers, addMember, removeMember } = require('../controllers/project.controller');
 const { authenticate } = require('../middleware/auth.middleware');
-const { requireRole, requireNotViewer } = require('../middleware/role.middleware');
+const { requireRole } = require('../middleware/role.middleware');
 
 router.use(authenticate);
 

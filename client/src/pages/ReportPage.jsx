@@ -36,10 +36,17 @@ export default function ReportPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/reports/summary')
-      .then((res) => setData(res.data.data))
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    const load = async () => {
+      try {
+        const res = await api.get('/reports/summary');
+        setData(res.data.data);
+      } catch (err) {
+        console.error('Failed to load report summary:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
   }, []);
 
   const handleExport = async (projectId, projectTitle) => {

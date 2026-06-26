@@ -7,7 +7,7 @@ import DivisionsTab from '../components/masterdata/DivisionsTab';
 import ClientContactsTab from '../components/masterdata/ClientContactsTab';
 
 export default function MasterDataPage() {
-  const { isAdmin, isAdminOrManager } = useAuth();
+  const { isAdminOrManager } = useAuth();
 
   return (
     <div className="space-y-6">

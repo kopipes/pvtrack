@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Pencil, Trash2, Users, ChevronDown, ChevronRight } from 'lucide-react';
+import { Plus, Pencil, Trash2, Users, ChevronDown, ChevronRight, Loader2 } from 'lucide-react';
 import api from '../../lib/axios';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../ui/Card';
@@ -13,7 +13,6 @@ import { Dialog, DialogContent, DialogClose } from '../ui/Dialog';
 import { cn } from '../../lib/utils';
 import { toast } from 'sonner';
 import { useForm } from 'react-hook-form';
-import { Loader2 } from 'lucide-react';
 
 function DivisionForm({ division, onSuccess }) {
   const [loading, setLoading] = useState(false);

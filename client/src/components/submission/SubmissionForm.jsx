@@ -54,11 +54,11 @@ export function SubmissionForm({ projectId, submission, onSuccess }) {
       } else {
         await api.post(`/projects/${projectId}/submissions`, payload);
       }
-      setLoading(false);
       onSuccess?.();
     } catch (err) {
-      setLoading(false);
       toast.error(err.response?.data?.message || 'Failed to save submission');
+    } finally {
+      setLoading(false);
     }
   };
 

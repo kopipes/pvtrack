@@ -1,7 +1,5 @@
 
 const { success, error } = require('../utils/response');
-const path = require('path');
-
 const prisma = require('../lib/prisma');
 
 const uploadFile = async (req, res) => {

@@ -1,4 +1,4 @@
-import { MessageSquare, RotateCcw, CheckSquare, Clock, User } from 'lucide-react';
+import { MessageSquare, RotateCcw, CheckSquare, Clock } from 'lucide-react';
 import { cn, STATUS_CONFIG, formatDate, isOverdue } from '../../lib/utils';
 import { Avatar } from '../ui/Avatar';
 import { ProgressBar } from '../ui/ProgressBar';
