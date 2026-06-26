@@ -571,36 +571,7 @@ function RevisionsTab({ submission, onUpdate }) {
             <span>by {rev.createdBy?.name}</span>
             <span>{timeAgo(rev.createdAt)}</span>
           </div>
-          {/* Status update buttons for admin/manager on non-resolved revisions */}
-          {isAdminOrManager && rev.status !== 'RESOLVED' && (
-            <div className="flex gap-2 pt-1">
-              {rev.status === 'OPEN' && (
-                <button
-                  className="text-xs text-blue-600 hover:underline"
-                  onClick={async () => {
-                    try {
-                      await api.patch(`/revisions/${rev.id}/status`, { status: 'IN_PROGRESS' });
-                      onUpdate();
-                    } catch { toast.error('Failed to update revision'); }
-                  }}
-                >
-                  Mark In Progress
-                </button>
-              )}
-              <button
-                className="text-xs text-emerald-600 hover:underline"
-                onClick={async () => {
-                  try {
-                    await api.patch(`/revisions/${rev.id}/status`, { status: 'RESOLVED' });
-                    onUpdate();
-                    toast.success('Revision marked as resolved');
-                  } catch { toast.error('Failed to update revision'); }
-                }}
-              >
-                Mark Resolved
-              </button>
-            </div>
-          )}
+
         </div>
       ))}
 
