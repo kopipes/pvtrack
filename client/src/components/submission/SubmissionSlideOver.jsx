@@ -554,29 +554,8 @@ function RevisionsTab({ submission, onUpdate }) {
 
   return (
     <div className="space-y-4">
-      {revisions.length === 0 && (
-        <p className="text-sm text-muted-foreground text-center py-6">No revisions yet</p>
-      )}
-
-      {revisions.map((rev) => (
-        <div key={rev.id} className="rounded-lg border border-border p-4 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-muted-foreground">Revision #{rev.revisionNumber}</span>
-            <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium', REVISION_STATUS_COLOR[rev.status])}>
-              {rev.status}
-            </span>
-          </div>
-          <p className="text-sm leading-relaxed">{rev.feedback}</p>
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>by {rev.createdBy?.name}</span>
-            <span>{timeAgo(rev.createdAt)}</span>
-          </div>
-
-        </div>
-      ))}
-
       {isAdminOrManager && (
-        <div className="space-y-3 pt-2 border-t border-border">
+        <div className="space-y-3 pb-2 border-b border-border">
           <Label>Request Revision</Label>
           <Textarea
             value={feedback}
@@ -605,6 +584,26 @@ function RevisionsTab({ submission, onUpdate }) {
           </Button>
         </div>
       )}
+
+      {revisions.length === 0 && (
+        <p className="text-sm text-muted-foreground text-center py-6">No revisions yet</p>
+      )}
+
+      {revisions.map((rev) => (
+        <div key={rev.id} className="rounded-lg border border-border p-4 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-muted-foreground">Revision #{rev.revisionNumber}</span>
+            <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium', REVISION_STATUS_COLOR[rev.status])}>
+              {rev.status}
+            </span>
+          </div>
+          <p className="text-sm leading-relaxed">{rev.feedback}</p>
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>by {rev.createdBy?.name}</span>
+            <span>{timeAgo(rev.createdAt)}</span>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
