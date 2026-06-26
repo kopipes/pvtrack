@@ -1,6 +1,5 @@
-
 const { success, error } = require('../utils/response');
-
+const { logActivity } = require('../utils/activityLog');
 const prisma = require('../lib/prisma');
 
 const getRevisions = async (req, res) => {
@@ -81,13 +80,43 @@ const updateRevisionStatus = async (req, res) => {
   if (!status) return error(res, 'status is required', 400);
 
   try {
+    // Fetch revision with submission context for logging
+    const existing = await prisma.revision.findUnique({
+      where: { id: req.params.id },
+      include: {
+        submission: { select: { id: true, title: true, projectId: true } },
+      },
+    });
+    if (!existing) return error(res, 'Revision not found', 404);
+
     const revision = await prisma.revision.update({
       where: { id: req.params.id },
       data: { status },
       include: { createdBy: { select: { id: true, name: true } } },
     });
+
+    // Log submit (IN_PROGRESS) or approve (RESOLVED)
+    if (status === 'IN_PROGRESS') {
+      await logActivity(
+        req.user.id,
+        'REVISION_SUBMITTED',
+        `Revision #${existing.revisionNumber} submitted by ${req.user.name}`,
+        existing.submission.projectId,
+        existing.submission.id,
+      );
+    } else if (status === 'RESOLVED') {
+      await logActivity(
+        req.user.id,
+        'REVISION_APPROVED',
+        `Revision #${existing.revisionNumber} approved by ${req.user.name}`,
+        existing.submission.projectId,
+        existing.submission.id,
+      );
+    }
+
     return success(res, revision, 'Revision status updated');
   } catch (err) {
+    console.error('updateRevisionStatus error:', err);
     return error(res, 'Failed to update revision status', 500);
   }
 };
