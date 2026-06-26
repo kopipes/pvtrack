@@ -463,7 +463,7 @@ function SubmissionTimeline({ divisionId }) {
                               transform: 'translate(-50%, -50%) rotate(45deg)',
                               width: 10,
                               height: 10,
-                              backgroundColor: '#f59e0b',
+                              backgroundColor: '#3b82f6',
                               border: '2px solid white',
                             }}
                             onMouseEnter={(e) => {
@@ -515,7 +515,7 @@ function SubmissionTimeline({ divisionId }) {
           </div>
         ))}
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <div className="w-2.5 h-2.5 shrink-0 rotate-45 border-2 border-white" style={{ backgroundColor: '#f59e0b' }} />
+          <div className="w-2.5 h-2.5 shrink-0 rotate-45 border-2 border-white" style={{ backgroundColor: '#3b82f6' }} />
           Revision milestone
         </div>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
