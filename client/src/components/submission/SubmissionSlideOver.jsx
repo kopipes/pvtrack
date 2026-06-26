@@ -135,7 +135,7 @@ function OverviewTab({ submission, onUpdate }) {
       title: submission.title,
       description: submission.description || '',
       status: submission.status,
-      deadline: submission.deadline ? submission.deadline.split('T')[0] : '',
+      deadline: submission.deadline ? new Date(submission.deadline).toLocaleDateString('en-CA') : '',
       assignedUserId: submission.assignedUserId || '',
     },
   });
@@ -165,7 +165,7 @@ function OverviewTab({ submission, onUpdate }) {
       title: submission.title,
       description: submission.description || '',
       status: submission.status,
-      deadline: submission.deadline ? submission.deadline.split('T')[0] : '',
+      deadline: submission.deadline ? new Date(submission.deadline).toLocaleDateString('en-CA') : '',
       assignedUserId: submission.assignedUserId || '',
     });
     setEditing(true);
