@@ -18,7 +18,7 @@ const getProjects = async (req, res) => {
 
     if (status) where.status = status;
     if (priority) where.priority = priority;
-    if (search) where.title = { contains: search, mode: 'insensitive' };
+    if (search) where.title = { contains: search };
 
     // Non-admin users only see projects they are members of or PIC
     if (req.user.role !== 'ADMIN') {

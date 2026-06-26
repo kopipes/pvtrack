@@ -17,7 +17,7 @@ const getRevisions = async (req, res) => {
 };
 
 const createRevision = async (req, res) => {
-  const { feedback, attachment } = req.body;
+  const { feedback, attachment, newDeadline } = req.body;
   if (!feedback || !feedback.trim()) return error(res, 'feedback is required', 400);
 
   try {
@@ -40,10 +40,23 @@ const createRevision = async (req, res) => {
       include: { createdBy: { select: { id: true, name: true } } },
     });
 
-    // Update submission status to REVISION
+    // Build submission update: always set status to REVISION, optionally update deadline
+    const submissionUpdate = { status: 'REVISION' };
+    const logParts = [`Revision #${revisionNumber} requested`];
+
+    if (newDeadline) {
+      const oldDeadline = submission.deadline
+        ? new Date(submission.deadline).toLocaleDateString('en-CA') // YYYY-MM-DD
+        : 'none';
+      const parsedNew = new Date(newDeadline);
+      const newDeadlineStr = parsedNew.toLocaleDateString('en-CA');
+      submissionUpdate.deadline = parsedNew;
+      logParts.push(`deadline changed: ${oldDeadline} → ${newDeadlineStr}`);
+    }
+
     await prisma.submission.update({
       where: { id: req.params.id },
-      data: { status: 'REVISION' },
+      data: submissionUpdate,
     });
 
     await prisma.activityLog.create({
@@ -52,12 +65,13 @@ const createRevision = async (req, res) => {
         projectId: submission.projectId,
         submissionId: submission.id,
         action: 'REVISION_REQUESTED',
-        description: `Revision #${revisionNumber} requested`,
+        description: logParts.join('; '),
       },
     });
 
     return success(res, revision, 'Revision created', 201);
   } catch (err) {
+    console.error('createRevision error:', err);
     return error(res, 'Failed to create revision', 500);
   }
 };

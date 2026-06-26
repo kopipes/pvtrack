@@ -523,6 +523,7 @@ function NotesTab({ submission, onUpdate }) {
 function RevisionsTab({ submission, onUpdate }) {
   const { isAdminOrManager, canWrite } = useAuth();
   const [feedback, setFeedback] = useState('');
+  const [newDeadline, setNewDeadline] = useState('');
   const [posting, setPosting] = useState(false);
   const revisions = submission.revisions || [];
 
@@ -530,8 +531,12 @@ function RevisionsTab({ submission, onUpdate }) {
     if (!feedback.trim()) return;
     setPosting(true);
     try {
-      await api.post(`/submissions/${submission.id}/revisions`, { feedback: feedback.trim() });
+      await api.post(`/submissions/${submission.id}/revisions`, {
+        feedback: feedback.trim(),
+        ...(newDeadline && { newDeadline }),
+      });
       setFeedback('');
+      setNewDeadline('');
       onUpdate();
       toast.success('Revision requested');
     } catch {
@@ -600,7 +605,7 @@ function RevisionsTab({ submission, onUpdate }) {
       ))}
 
       {isAdminOrManager && (
-        <div className="space-y-2 pt-2 border-t border-border">
+        <div className="space-y-3 pt-2 border-t border-border">
           <Label>Request Revision</Label>
           <Textarea
             value={feedback}
@@ -609,6 +614,20 @@ function RevisionsTab({ submission, onUpdate }) {
             rows={4}
             className="text-sm"
           />
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">New Deadline (optional)</Label>
+            <Input
+              type="date"
+              value={newDeadline}
+              onChange={(e) => setNewDeadline(e.target.value)}
+              className="text-sm"
+            />
+            {submission.deadline && (
+              <p className="text-xs text-muted-foreground">
+                Current deadline: {new Date(submission.deadline).toLocaleDateString('en-CA')}
+              </p>
+            )}
+          </div>
           <Button size="sm" onClick={addRevision} disabled={posting || !feedback.trim()} variant="outline">
             {posting ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
             Request Revision
