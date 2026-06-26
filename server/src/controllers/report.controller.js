@@ -256,4 +256,50 @@ const exportProjectReport = async (req, res) => {
   }
 };
 
-module.exports = { getSummary, getProjectReport, exportProjectReport };
+const getTimeline = async (req, res) => {
+  try {
+    const { divisionId } = req.query;
+
+    const where = {
+      assignedUserId: { not: null },
+      project: { status: 'ACTIVE' },
+    };
+    if (divisionId) where.assignedUser = { divisions: { some: { divisionId } } };
+
+    const submissions = await prisma.submission.findMany({
+      where,
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        progress: true,
+        createdAt: true,
+        deadline: true,
+        assignedUser: { select: { id: true, name: true } },
+        project: { select: { id: true, title: true } },
+        revisions: {
+          select: { id: true, revisionNumber: true, createdAt: true, status: true, feedback: true },
+          orderBy: { revisionNumber: 'asc' },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    // Group by assignedUser
+    const byUser = {};
+    for (const s of submissions) {
+      const uid = s.assignedUser.id;
+      if (!byUser[uid]) {
+        byUser[uid] = { user: s.assignedUser, submissions: [] };
+      }
+      byUser[uid].submissions.push(s);
+    }
+
+    return success(res, Object.values(byUser));
+  } catch (err) {
+    console.error('getTimeline error:', err);
+    return error(res, 'Failed to fetch timeline data', 500);
+  }
+};
+
+module.exports = { getSummary, getProjectReport, exportProjectReport, getTimeline };

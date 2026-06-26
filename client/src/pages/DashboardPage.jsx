@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
 } from 'recharts';
 import {
   AlertTriangle, CheckCircle2, Clock, FolderKanban,
-  TrendingUp, AlertCircle, Calendar, ChevronDown, ChevronUp, Filter, X
+  TrendingUp, AlertCircle, Calendar, ChevronDown, ChevronUp, Filter, X, Users
 } from 'lucide-react';
 import api from '../lib/axios';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
@@ -271,6 +271,262 @@ function ContributorRow({ contributor: c, rank, maxCount }) {
   );
 }
 
+// ── Submission Timeline (Gantt) ────────────────────────────────────────────────
+const STATUS_BAR_COLOR = {
+  TODO:        '#94a3b8',
+  IN_PROGRESS: '#6366f1',
+  SUBMITTED:   '#818cf8',
+  REVISION:    '#f59e0b',
+  RESUBMITTED: '#a78bfa',
+  APPROVED:    '#10b981',
+  DONE:        '#10b981',
+  ON_HOLD:     '#64748b',
+};
+
+function SubmissionTimeline({ divisionId }) {
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [tooltip, setTooltip] = useState(null);
+
+  useEffect(() => {
+    setLoading(true);
+    const params = divisionId ? { divisionId } : {};
+    api.get('/reports/timeline', { params })
+      .then((res) => setRows(res.data.data || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [divisionId]);
+
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="flex gap-3 items-center">
+            <Skeleton className="h-6 w-24 shrink-0" />
+            <Skeleton className="h-6 flex-1" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (!rows.length) {
+    return (
+      <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
+        <Users className="h-10 w-10 opacity-20 mb-3" />
+        <p className="text-sm">No active submissions assigned</p>
+      </div>
+    );
+  }
+
+  // Compute global date range
+  const allSubmissions = rows.flatMap((r) => r.submissions);
+  const allDates = allSubmissions.flatMap((s) => [
+    s.createdAt ? new Date(s.createdAt) : null,
+    s.deadline ? new Date(s.deadline) : null,
+    ...s.revisions.map((r) => new Date(r.createdAt)),
+  ]).filter(Boolean);
+
+  const now = new Date();
+  const minDate = new Date(Math.min(...allDates.map((d) => d.getTime()), now.getTime()));
+  const maxDate = new Date(Math.max(...allDates.map((d) => d.getTime()), now.getTime()));
+  const totalMs = maxDate.getTime() - minDate.getTime() || 86400000;
+  const padMs = totalMs * 0.05;
+  const rangeStart = new Date(minDate.getTime() - padMs);
+  const rangeEnd = new Date(maxDate.getTime() + padMs);
+  const rangeMs = rangeEnd.getTime() - rangeStart.getTime();
+
+  const toPercent = (date) => {
+    if (!date) return null;
+    return ((new Date(date).getTime() - rangeStart.getTime()) / rangeMs) * 100;
+  };
+
+  const nowPct = toPercent(now);
+
+  const ticks = Array.from({ length: 5 }, (_, i) => {
+    const d = new Date(rangeStart.getTime() + (rangeMs * i) / 4);
+    return { pct: (i / 4) * 100, label: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) };
+  });
+
+  return (
+    <div className="relative select-none">
+      {/* Floating tooltip */}
+      {tooltip && (
+        <div
+          className="fixed z-50 rounded-lg border border-border bg-card shadow-xl px-3 py-2 text-xs pointer-events-none max-w-xs"
+          style={{ left: tooltip.x + 14, top: tooltip.y }}
+        >
+          {tooltip.content}
+        </div>
+      )}
+
+      {/* Date axis */}
+      <div className="flex mb-3 pl-32">
+        <div className="relative flex-1 h-5">
+          {ticks.map((t, i) => (
+            <span
+              key={i}
+              className="absolute text-[10px] text-muted-foreground -translate-x-1/2"
+              style={{ left: `${t.pct}%` }}
+            >
+              {t.label}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Person rows */}
+      <div className="space-y-5">
+        {rows.map((row) => (
+          <div key={row.user.id}>
+            <div className="flex items-center gap-2 mb-2">
+              <Avatar name={row.user.name} size="sm" />
+              <span className="text-sm font-semibold">{row.user.name}</span>
+              <span className="text-xs text-muted-foreground">
+                ({row.submissions.length} submission{row.submissions.length !== 1 ? 's' : ''})
+              </span>
+            </div>
+
+            <div className="space-y-1.5">
+              {row.submissions.map((sub) => {
+                const startPct = Math.max(0, toPercent(sub.createdAt) ?? 0);
+                const endPct = toPercent(sub.deadline);
+                const barRight = endPct !== null ? Math.min(100, endPct) : Math.min(100, (toPercent(now) ?? 0) + 2);
+                const barWidth = Math.max(barRight - startPct, 0.5);
+                const isOver = sub.deadline && new Date(sub.deadline) < now && !['APPROVED', 'DONE'].includes(sub.status);
+                const barColor = isOver ? '#ef4444' : (STATUS_BAR_COLOR[sub.status] || '#6366f1');
+
+                return (
+                  <div key={sub.id} className="flex items-center gap-2">
+                    {/* Row label */}
+                    <div className="w-28 shrink-0 text-right pr-2">
+                      <span className="text-xs text-muted-foreground truncate block" title={sub.title}>
+                        {sub.title.length > 14 ? sub.title.slice(0, 14) + '…' : sub.title}
+                      </span>
+                    </div>
+
+                    {/* Bar track */}
+                    <div className="relative flex-1 rounded-full bg-muted" style={{ height: 20 }}>
+                      {/* Today line */}
+                      {nowPct !== null && nowPct >= 0 && nowPct <= 100 && (
+                        <div
+                          className="absolute top-0 bottom-0 w-px bg-red-400 z-10"
+                          style={{ left: `${nowPct}%` }}
+                        />
+                      )}
+
+                      {/* Submission bar */}
+                      <div
+                        className="absolute top-1 bottom-1 rounded-full cursor-pointer hover:opacity-80 transition-opacity"
+                        style={{ left: `${startPct}%`, width: `${barWidth}%`, backgroundColor: barColor }}
+                        onMouseEnter={(e) => {
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setTooltip({
+                            x: rect.right,
+                            y: rect.top,
+                            content: (
+                              <div className="space-y-1">
+                                <p className="font-semibold">{sub.title}</p>
+                                <p className="text-muted-foreground">{sub.project.title}</p>
+                                <p>Status: <span className="font-medium">{STATUS_CONFIG[sub.status]?.label || sub.status}</span></p>
+                                <p>Progress: <span className="font-medium">{sub.progress}%</span></p>
+                                {sub.deadline && (
+                                  <p>Deadline: <span className={cn('font-medium', isOver && 'text-red-500')}>{formatDate(sub.deadline)}</span></p>
+                                )}
+                                {sub.revisions.length > 0 && (
+                                  <p>Revisions: <span className="font-medium text-amber-500">{sub.revisions.length}</span></p>
+                                )}
+                              </div>
+                            ),
+                          });
+                        }}
+                        onMouseLeave={() => setTooltip(null)}
+                      >
+                        {/* Progress overlay */}
+                        <div
+                          className="absolute inset-y-0 left-0 rounded-full bg-white/25"
+                          style={{ width: `${sub.progress}%` }}
+                        />
+                      </div>
+
+                      {/* Revision diamonds */}
+                      {sub.revisions.map((rev) => {
+                        const revPct = toPercent(rev.createdAt);
+                        if (revPct === null || revPct < 0 || revPct > 100) return null;
+                        return (
+                          <div
+                            key={rev.id}
+                            className="absolute z-20 cursor-pointer"
+                            style={{
+                              left: `${revPct}%`,
+                              top: '50%',
+                              transform: 'translate(-50%, -50%) rotate(45deg)',
+                              width: 10,
+                              height: 10,
+                              backgroundColor: '#f59e0b',
+                              border: '2px solid white',
+                            }}
+                            onMouseEnter={(e) => {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              setTooltip({
+                                x: rect.right,
+                                y: rect.top,
+                                content: (
+                                  <div className="space-y-1">
+                                    <p className="font-semibold text-amber-600">Revision #{rev.revisionNumber}</p>
+                                    <p className="text-muted-foreground">{formatDate(rev.createdAt)}</p>
+                                    <p className="line-clamp-3">{rev.feedback}</p>
+                                  </div>
+                                ),
+                              });
+                            }}
+                            onMouseLeave={() => setTooltip(null)}
+                          />
+                        );
+                      })}
+
+                      {/* Deadline marker */}
+                      {endPct !== null && endPct >= 0 && endPct <= 100 && (
+                        <div
+                          className="absolute top-0 bottom-0 w-0.5 z-10 rounded"
+                          style={{ left: `${endPct}%`, backgroundColor: isOver ? '#ef4444' : '#64748b' }}
+                        />
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Legend */}
+      <div className="flex flex-wrap gap-4 mt-4 pt-3 border-t border-border">
+        {[
+          { color: '#6366f1', label: 'In Progress' },
+          { color: '#10b981', label: 'Approved/Done' },
+          { color: '#ef4444', label: 'Overdue' },
+          { color: '#94a3b8', label: 'Todo / On Hold' },
+        ].map(({ color, label }) => (
+          <div key={label} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: color }} />
+            {label}
+          </div>
+        ))}
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <div className="w-2.5 h-2.5 shrink-0 rotate-45 border-2 border-white" style={{ backgroundColor: '#f59e0b' }} />
+          Revision milestone
+        </div>
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <div className="w-px h-3 shrink-0 bg-red-400" />
+          Today
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -474,6 +730,19 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Submission Timeline */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Submission Timeline by Person
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <SubmissionTimeline divisionId={filters.divisionId} />
+        </CardContent>
+      </Card>
 
       {/* Contributors */}
       <Card>
