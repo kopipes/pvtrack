@@ -123,18 +123,6 @@ export default function LoginPage() {
             </Button>
           </form>
 
-          <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-1">
-            <p className="text-xs font-medium text-muted-foreground">Demo accounts (password: password123)</p>
-            {[
-              { email: 'admin@pvtrack.com', role: 'Admin' },
-              { email: 'manager@pvtrack.com', role: 'Manager' },
-              { email: 'alex@pvtrack.com', role: 'User' },
-            ].map(({ email, role }) => (
-              <p key={email} className="text-xs text-muted-foreground">
-                <span className="font-medium text-foreground">{role}:</span> {email}
-              </p>
-            ))}
-          </div>
         </div>
       </div>
     </div>
