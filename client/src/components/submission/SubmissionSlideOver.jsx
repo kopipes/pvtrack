@@ -782,39 +782,28 @@ function AttachmentsTab({ submission, onUpdate }) {
         </div>
       )}
 
-      {/* All files list */}
-      <div className="space-y-2">
-        {attachments.map((att) => {
-          const isImage = att.fileType?.startsWith('image/');
-          const imgIndex = isImage ? images.findIndex((i) => i.id === att.id) : -1;
-          return (
+      {/* Non-image files list */}
+      {attachments.filter((a) => !a.fileType?.startsWith('image/')).length > 0 && (
+        <div className="space-y-2">
+          {attachments.filter((a) => !a.fileType?.startsWith('image/')).map((att) => (
             <div key={att.id} className="flex items-center gap-3 rounded-lg border border-border p-3">
               <Paperclip className="h-4 w-4 text-muted-foreground shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{att.fileName}</p>
                 <p className="text-xs text-muted-foreground">{att.fileType} · {att.uploadedBy?.name}</p>
               </div>
-              {isImage ? (
-                <button
-                  onClick={() => setLightbox({ index: imgIndex })}
-                  className="text-xs text-primary hover:underline shrink-0"
-                >
-                  View
-                </button>
-              ) : (
-                <a
-                  href={att.fileUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-primary hover:underline shrink-0"
-                >
-                  View
-                </a>
-              )}
+              <a
+                href={att.fileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-primary hover:underline shrink-0"
+              >
+                View
+              </a>
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      )}
 
       {canWrite && (
         <div className="pt-2 border-t border-border">
