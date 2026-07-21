@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import * as RadixDialog from '@radix-ui/react-dialog';
 import {
   X, Loader2, Plus, Trash2, MessageSquare,
-  RotateCcw, Paperclip, Check, Pencil
+  RotateCcw, Paperclip, Check, Pencil, ChevronLeft, ChevronRight, ZoomIn
 } from 'lucide-react';
 import { useSubmission } from '../../hooks/useSubmissions';
 import { useAuth } from '../../contexts/AuthContext';
@@ -644,13 +644,88 @@ function RevisionsTab({ submission, onUpdate }) {
   );
 }
 
+// ── Image lightbox modal ──────────────────────────────────────────────────────
+function ImageLightbox({ images, initialIndex, onClose }) {
+  const [index, setIndex] = useState(initialIndex);
+
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowRight') setIndex((i) => (i + 1) % images.length);
+      if (e.key === 'ArrowLeft') setIndex((i) => (i - 1 + images.length) % images.length);
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [images.length, onClose]);
+
+  const img = images[index];
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      {/* Close */}
+      <button
+        className="absolute top-4 right-4 text-white/80 hover:text-white bg-black/40 rounded-full p-1.5 z-10"
+        onClick={onClose}
+        aria-label="Close"
+      >
+        <X className="h-5 w-5" />
+      </button>
+
+      {/* Counter */}
+      {images.length > 1 && (
+        <span className="absolute top-4 left-1/2 -translate-x-1/2 text-white/70 text-sm bg-black/40 px-3 py-1 rounded-full">
+          {index + 1} / {images.length}
+        </span>
+      )}
+
+      {/* Prev arrow */}
+      {images.length > 1 && (
+        <button
+          className="absolute left-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white bg-black/40 rounded-full p-2 z-10"
+          onClick={(e) => { e.stopPropagation(); setIndex((i) => (i - 1 + images.length) % images.length); }}
+          aria-label="Previous"
+        >
+          <ChevronLeft className="h-6 w-6" />
+        </button>
+      )}
+
+      {/* Image */}
+      <div className="max-w-[90vw] max-h-[90vh] flex flex-col items-center gap-3" onClick={(e) => e.stopPropagation()}>
+        <img
+          src={img.fileUrl}
+          alt={img.fileName}
+          className="max-w-[90vw] max-h-[80vh] object-contain rounded-lg shadow-2xl"
+        />
+        <p className="text-white/60 text-xs truncate max-w-xs">{img.fileName}</p>
+      </div>
+
+      {/* Next arrow */}
+      {images.length > 1 && (
+        <button
+          className="absolute right-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white bg-black/40 rounded-full p-2 z-10"
+          onClick={(e) => { e.stopPropagation(); setIndex((i) => (i + 1) % images.length); }}
+          aria-label="Next"
+        >
+          <ChevronRight className="h-6 w-6" />
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ── Attachments tab ───────────────────────────────────────────────────────────
 function AttachmentsTab({ submission, onUpdate }) {
   const { canWrite: _canWrite } = useAuth();
   const isLocked = ['APPROVED', 'DONE'].includes(submission.status);
   const canWrite = _canWrite && !isLocked;
   const [uploading, setUploading] = useState(false);
+  const [lightbox, setLightbox] = useState(null); // { index }
   const attachments = submission.attachments || [];
+
+  const images = attachments.filter((a) => a.fileType?.startsWith('image/'));
 
   const handleUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -673,28 +748,72 @@ function AttachmentsTab({ submission, onUpdate }) {
 
   return (
     <div className="space-y-4">
+      {lightbox !== null && (
+        <ImageLightbox
+          images={images}
+          initialIndex={lightbox.index}
+          onClose={() => setLightbox(null)}
+        />
+      )}
+
       {attachments.length === 0 && (
         <p className="text-sm text-muted-foreground text-center py-6">No attachments yet</p>
       )}
 
-      <div className="space-y-2">
-        {attachments.map((att) => (
-          <div key={att.id} className="flex items-center gap-3 rounded-lg border border-border p-3">
-            <Paperclip className="h-4 w-4 text-muted-foreground shrink-0" />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{att.fileName}</p>
-              <p className="text-xs text-muted-foreground">{att.fileType} · {att.uploadedBy?.name}</p>
-            </div>
-            <a
-              href={att.fileUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-primary hover:underline shrink-0"
+      {/* Image grid */}
+      {images.length > 0 && (
+        <div className="grid grid-cols-3 gap-2">
+          {images.map((img, i) => (
+            <button
+              key={img.id}
+              onClick={() => setLightbox({ index: i })}
+              className="relative aspect-square rounded-md overflow-hidden border border-border hover:border-primary group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
-              View
-            </a>
-          </div>
-        ))}
+              <img
+                src={img.fileUrl}
+                alt={img.fileName}
+                className="w-full h-full object-cover transition-transform group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                <ZoomIn className="h-5 w-5 text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow" />
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* All files list */}
+      <div className="space-y-2">
+        {attachments.map((att) => {
+          const isImage = att.fileType?.startsWith('image/');
+          const imgIndex = isImage ? images.findIndex((i) => i.id === att.id) : -1;
+          return (
+            <div key={att.id} className="flex items-center gap-3 rounded-lg border border-border p-3">
+              <Paperclip className="h-4 w-4 text-muted-foreground shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{att.fileName}</p>
+                <p className="text-xs text-muted-foreground">{att.fileType} · {att.uploadedBy?.name}</p>
+              </div>
+              {isImage ? (
+                <button
+                  onClick={() => setLightbox({ index: imgIndex })}
+                  className="text-xs text-primary hover:underline shrink-0"
+                >
+                  View
+                </button>
+              ) : (
+                <a
+                  href={att.fileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary hover:underline shrink-0"
+                >
+                  View
+                </a>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {canWrite && (
