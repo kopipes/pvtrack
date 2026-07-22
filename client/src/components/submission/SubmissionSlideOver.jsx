@@ -21,19 +21,19 @@ import { cn, STATUS_CONFIG, formatDate, isOverdue, timeAgo } from '../../lib/uti
 import api from '../../lib/axios';
 import { toast } from 'sonner';
 
-// ── Progress quick-set buttons ────────────────────────────────────────────────
+// ── Progress section ──────────────────────────────────────────────────────────
 function ProgressSection({ submission, onUpdate }) {
-  const [value, setValue] = useState(submission.progress);
+  const { isAdminOrManager } = useAuth();
   const [saving, setSaving] = useState(false);
 
   const isLocked = ['APPROVED', 'DONE'].includes(submission.status);
+  const current = isLocked ? 100 : submission.progress;
 
   const save = async (v) => {
-    if (isLocked) return;
+    if (isLocked || !isAdminOrManager) return;
     setSaving(true);
     try {
       await api.patch(`/submissions/${submission.id}/progress`, { progress: v });
-      setValue(v);
       onUpdate();
       toast.success('Progress updated');
     } catch {
@@ -43,55 +43,47 @@ function ProgressSection({ submission, onUpdate }) {
     }
   };
 
-  if (isLocked) {
-    return (
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <Label>Progress</Label>
-          <span className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">100%</span>
-        </div>
-        <ProgressBar value={100} size="lg" />
-        <p className="text-xs text-muted-foreground">
-          Progress is locked at 100% — submission is {submission.status.toLowerCase()}.
-        </p>
-      </div>
-    );
-  }
+  const steps = [
+    { label: 'On Progress', value: 50 },
+    { label: 'Done', value: 100 },
+  ];
 
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <Label>Progress</Label>
-        <span className="text-sm font-semibold">{value}%</span>
+        <span className={cn(
+          'text-sm font-semibold',
+          current === 100 ? 'text-emerald-600 dark:text-emerald-400' : 'text-foreground'
+        )}>
+          {current === 100 ? 'Done' : current > 0 ? 'On Progress' : 'Not Started'}
+        </span>
       </div>
-      <ProgressBar value={value} size="lg" />
-      <div className="flex gap-2">
-        {[0, 25, 50, 75, 100].map((v) => (
-          <Button
-            key={v}
-            size="sm"
-            variant={value === v ? 'default' : 'outline'}
-            className="flex-1 text-xs"
-            onClick={() => save(v)}
-            disabled={saving}
-          >
-            {v}%
-          </Button>
-        ))}
-      </div>
-      <div className="flex gap-2">
-        <Input
-          type="number"
-          min={0}
-          max={100}
-          value={value}
-          onChange={(e) => setValue(Math.min(100, Math.max(0, Number(e.target.value))))}
-          className="w-24 text-sm"
-        />
-        <Button size="sm" onClick={() => save(value)} disabled={saving}>
-          {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Set'}
-        </Button>
-      </div>
+      <ProgressBar value={current} size="lg" />
+      {isAdminOrManager && !isLocked && (
+        <div className="flex gap-2">
+          {steps.map((s) => (
+            <Button
+              key={s.value}
+              size="sm"
+              variant={current === s.value ? 'default' : 'outline'}
+              className="flex-1 text-xs"
+              onClick={() => save(s.value)}
+              disabled={saving}
+            >
+              {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : s.label}
+            </Button>
+          ))}
+        </div>
+      )}
+      {!isAdminOrManager && !isLocked && (
+        <p className="text-xs text-muted-foreground">Progress is set by the project manager.</p>
+      )}
+      {isLocked && (
+        <p className="text-xs text-muted-foreground">
+          Progress is locked — submission is {submission.status.toLowerCase()}.
+        </p>
+      )}
     </div>
   );
 }
