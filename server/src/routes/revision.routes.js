@@ -10,6 +10,6 @@ submissionRouter.get('/', getRevisions);
 submissionRouter.post('/', requireRole('ADMIN', 'MANAGER'), createRevision);
 
 standaloneRouter.use(authenticate);
-standaloneRouter.patch('/:id/status', requireRole('ADMIN', 'MANAGER'), updateRevisionStatus);
+standaloneRouter.patch('/:id/status', updateRevisionStatus);
 
 module.exports = { submissionRevisionRouter: submissionRouter, revisionsRouter: standaloneRouter };

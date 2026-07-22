@@ -79,6 +79,11 @@ const updateRevisionStatus = async (req, res) => {
   const { status } = req.body;
   if (!status) return error(res, 'status is required', 400);
 
+  // Only ADMIN/MANAGER can resolve (approve) a revision
+  if (status === 'RESOLVED' && !['ADMIN', 'MANAGER'].includes(req.user.role)) {
+    return error(res, 'Only managers can approve revisions', 403);
+  }
+
   try {
     // Fetch revision with submission context for logging
     const existing = await prisma.revision.findUnique({
