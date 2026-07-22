@@ -597,7 +597,7 @@ function RevisionsTab({ submission, onUpdate }) {
           {/* Per-revision action buttons */}
           {rev.status !== 'RESOLVED' && (
             <div className="flex gap-2 pt-1 border-t border-border">
-              {canWrite && ['OPEN', 'IN_PROGRESS'].includes(rev.status) && (
+              {canWrite && rev.status === 'OPEN' && (
                 <Button
                   size="sm"
                   variant="outline"
